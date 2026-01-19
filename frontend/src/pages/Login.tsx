@@ -1,0 +1,76 @@
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import AuthShell from "@/components/AuthShell";
+
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6)
+});
+
+type LoginForm = z.infer<typeof loginSchema>;
+
+export default function LoginPage() {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting }
+  } = useForm<LoginForm>({
+    resolver: zodResolver(loginSchema)
+  });
+
+  const onSubmit = async (values: LoginForm) => {
+    console.log("login", values);
+  };
+
+  return (
+    <AuthShell
+      title="Welcome back"
+      subtitle="Sign in to continue working in SprintDesk."
+      footerLabel="New here?"
+      footerLink="/register"
+      footerLinkLabel="Create an account"
+    >
+      <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+        <div>
+          <label className="text-sm font-medium text-slate-700" htmlFor="email">
+            Email
+          </label>
+          <input
+            className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            id="email"
+            type="email"
+            {...register("email")}
+          />
+          {errors.email ? (
+            <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>
+          ) : null}
+        </div>
+        <div>
+          <label
+            className="text-sm font-medium text-slate-700"
+            htmlFor="password"
+          >
+            Password
+          </label>
+          <input
+            className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            id="password"
+            type="password"
+            {...register("password")}
+          />
+          {errors.password ? (
+            <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>
+          ) : null}
+        </div>
+        <button
+          className="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+          type="submit"
+          disabled={isSubmitting}
+        >
+          Sign in
+        </button>
+      </form>
+    </AuthShell>
+  );
+}
