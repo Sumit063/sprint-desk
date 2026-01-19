@@ -1,0 +1,53 @@
+import { create } from "zustand";
+import api, { getAccessToken, setAccessToken } from "@/lib/api";
+
+type User = {
+  id: string;
+  email: string;
+  name: string;
+};
+
+type AuthState = {
+  user: User | null;
+  accessToken: string | null;
+  isLoading: boolean;
+  bootstrap: () => Promise<void>;
+  login: (payload: { email: string; password: string }) => Promise<void>;
+  register: (payload: { name: string; email: string; password: string }) => Promise<void>;
+  logout: () => Promise<void>;
+};
+
+export const useAuthStore = create<AuthState>((set) => ({
+  user: null,
+  accessToken: null,
+  isLoading: false,
+  bootstrap: async () => {
+    set({ isLoading: true });
+    try {
+      const res = await api.get("/api/users/me");
+      set({ user: res.data.user, accessToken: getAccessToken() });
+    } catch {
+      setAccessToken(null);
+      set({ user: null, accessToken: null });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  login: async (payload) => {
+    const res = await api.post("/api/auth/login", payload);
+    const token = res.data.accessToken ?? null;
+    setAccessToken(token);
+    set({ accessToken: token, user: res.data.user ?? null });
+  },
+  register: async (payload) => {
+    const res = await api.post("/api/auth/register", payload);
+    const token = res.data.accessToken ?? null;
+    setAccessToken(token);
+    set({ accessToken: token, user: res.data.user ?? null });
+  },
+  logout: async () => {
+    await api.post("/api/auth/logout");
+    setAccessToken(null);
+    set({ accessToken: null, user: null });
+  }
+}));

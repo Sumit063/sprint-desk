@@ -1,7 +1,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import AuthShell from "@/components/AuthShell";
+import { useAuthStore } from "@/stores/auth";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -11,6 +13,8 @@ const loginSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
+  const login = useAuthStore((state) => state.login);
+  const [formError, setFormError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -20,7 +24,12 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (values: LoginForm) => {
-    console.log("login", values);
+    setFormError(null);
+    try {
+      await login(values);
+    } catch {
+      setFormError("Unable to sign in. Check your details and try again.");
+    }
   };
 
   return (
@@ -32,6 +41,11 @@ export default function LoginPage() {
       footerLinkLabel="Create an account"
     >
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+        {formError ? (
+          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
+            {formError}
+          </p>
+        ) : null}
         <div>
           <label className="text-sm font-medium text-slate-700" htmlFor="email">
             Email
