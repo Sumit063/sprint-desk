@@ -1,7 +1,10 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
+import { z } from "zod";
 import { RefreshTokenModel } from "../models/RefreshToken";
 import { UserModel } from "../models/User";
+import { authLimiter } from "../middleware/rateLimit";
+import { validateBody } from "../middleware/validate";
 import {
   refreshCookieName,
   refreshCookieOptions
@@ -15,22 +18,31 @@ import {
 
 const router = Router();
 
-router.post("/register", async (req, res) => {
-  const { email, name, password } = req.body ?? {};
+router.use(authLimiter);
 
-  if (!email || !name || !password) {
-    return res.status(400).json({ message: "Missing required fields" });
-  }
+const registerSchema = z.object({
+  email: z.string().email(),
+  name: z.string().min(1),
+  password: z.string().min(6)
+});
 
-  const existing = await UserModel.findOne({ email: String(email).toLowerCase() });
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6)
+});
+
+router.post("/register", validateBody(registerSchema), async (req, res) => {
+  const { email, name, password } = req.body;
+
+  const existing = await UserModel.findOne({ email: email.toLowerCase() });
   if (existing) {
     return res.status(409).json({ message: "Email already in use" });
   }
 
-  const passwordHash = await bcrypt.hash(String(password), 10);
+  const passwordHash = await bcrypt.hash(password, 10);
   const user = await UserModel.create({
-    email: String(email).toLowerCase(),
-    name: String(name),
+    email: email.toLowerCase(),
+    name,
     passwordHash
   });
 
@@ -50,19 +62,15 @@ router.post("/register", async (req, res) => {
   });
 });
 
-router.post("/login", async (req, res) => {
-  const { email, password } = req.body ?? {};
+router.post("/login", validateBody(loginSchema), async (req, res) => {
+  const { email, password } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({ message: "Missing credentials" });
-  }
-
-  const user = await UserModel.findOne({ email: String(email).toLowerCase() });
+  const user = await UserModel.findOne({ email: email.toLowerCase() });
   if (!user) {
     return res.status(401).json({ message: "Invalid credentials" });
   }
 
-  const valid = await bcrypt.compare(String(password), user.passwordHash);
+  const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
     return res.status(401).json({ message: "Invalid credentials" });
   }
