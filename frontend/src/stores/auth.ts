@@ -21,7 +21,7 @@ type AuthState = {
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   accessToken: null,
-  isLoading: false,
+  isLoading: true,
   bootstrap: async () => {
     set({ isLoading: true });
     try {
