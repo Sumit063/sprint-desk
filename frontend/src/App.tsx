@@ -5,6 +5,7 @@ import LoginPage from "@/pages/Login";
 import RegisterPage from "@/pages/Register";
 import IssuesPage from "@/pages/Issues";
 import KnowledgeBasePage from "@/pages/KnowledgeBase";
+import SettingsPage from "@/pages/Settings";
 import WorkspacesPage from "@/pages/Workspaces";
 import { useAuthStore } from "@/stores/auth";
 
@@ -48,7 +49,7 @@ export default function App() {
           <Route index element={<IssuesPage />} />
           <Route path="issues" element={<IssuesPage />} />
           <Route path="kb" element={<KnowledgeBasePage />} />
-          <Route path="settings" element={<WorkspacesPage />} />
+          <Route path="settings" element={<SettingsPage />} />
           <Route path="workspaces" element={<WorkspacesPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/app" replace />} />

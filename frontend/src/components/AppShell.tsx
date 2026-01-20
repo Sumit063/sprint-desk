@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/stores/auth";
 import WorkspaceSwitcher from "@/components/WorkspaceSwitcher";
 
@@ -26,6 +26,12 @@ export default function AppShell() {
         </div>
         <div className="mt-6">
           <WorkspaceSwitcher />
+          <Link
+            className="mt-2 inline-block text-xs font-medium text-slate-500 hover:text-slate-700"
+            to="/app/workspaces"
+          >
+            Manage workspaces
+          </Link>
         </div>
         <nav className="mt-8 flex-1 space-y-2">
           {navItems.map((item) => (
