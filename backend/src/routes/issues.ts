@@ -20,16 +20,56 @@ const createIssueSchema = z.object({
 
 const updateIssueSchema = createIssueSchema.partial();
 
+const parseNumber = (value: unknown, fallback: number) => {
+  const parsed = Number(value);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return parsed;
+  }
+  return fallback;
+};
+
 router.use(requireAuth);
 router.use(requireWorkspaceMember);
 
 router.get("/", async (req, res) => {
-  const issues = await IssueModel.find({ workspaceId: req.workspaceId })
+  const status = req.query.status;
+  const priority = req.query.priority;
+  const assigneeId = req.query.assigneeId;
+  const page = parseNumber(req.query.page, 1);
+  const limit = Math.min(parseNumber(req.query.limit, 20), 50);
+
+  const filters: Record<string, unknown> = {
+    workspaceId: req.workspaceId
+  };
+
+  if (typeof status === "string" && issueStatuses.includes(status as any)) {
+    filters.status = status;
+  }
+
+  if (typeof priority === "string" && issuePriorities.includes(priority as any)) {
+    filters.priority = priority;
+  }
+
+  if (typeof assigneeId === "string" && assigneeId.length > 0) {
+    filters.assigneeId = assigneeId;
+  }
+
+  const total = await IssueModel.countDocuments(filters);
+  const issues = await IssueModel.find(filters)
     .sort({ createdAt: -1 })
+    .skip((page - 1) * limit)
+    .limit(limit)
     .populate("assigneeId", "name email")
     .populate("createdBy", "name email");
 
-  return res.json({ issues });
+  return res.json({
+    issues,
+    pagination: {
+      page,
+      limit,
+      total
+    }
+  });
 });
 
 router.post(
