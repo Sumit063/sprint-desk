@@ -2,6 +2,14 @@
 
 Multi-tenant issue tracker + knowledge base. This repo is built in phased commits, keeping each day runnable.
 
+## MVP Features
+
+- Auth with refresh token rotation (access token in memory, refresh in httpOnly cookie)
+- Workspaces + RBAC (owner/admin/member/viewer)
+- Issues with comments, assignees, and realtime updates
+- Knowledge base articles with markdown preview and linked issues
+- Notifications inbox for assignments and mentions
+
 ## Quick Start (Docker)
 
 ```bash
