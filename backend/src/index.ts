@@ -10,6 +10,7 @@ import workspacesRoutes from "./routes/workspaces";
 import issuesRoutes from "./routes/issues";
 import commentsRoutes from "./routes/comments";
 import notificationsRoutes from "./routes/notifications";
+import articlesRoutes from "./routes/articles";
 import { initSocket } from "./socket";
 
 dotenv.config();
@@ -30,6 +31,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/workspaces", workspacesRoutes);
 app.use("/api/workspaces/:id/issues", issuesRoutes);
+app.use("/api/workspaces/:id/articles", articlesRoutes);
 app.use("/api/issues/:issueId/comments", commentsRoutes);
 app.use("/api/notifications", notificationsRoutes);
 
