@@ -38,17 +38,37 @@ const run = async () => {
     });
   }
 
-  await MembershipModel.updateOne(
-    { workspaceId: workspace._id, userId: owner._id },
-    { role: "OWNER" },
-    { upsert: true }
-  );
+  const ownerMembership = await MembershipModel.findOne({
+    workspaceId: workspace._id,
+    userId: owner._id
+  });
 
-  await MembershipModel.updateOne(
-    { workspaceId: workspace._id, userId: member._id },
-    { role: "MEMBER" },
-    { upsert: true }
-  );
+  if (!ownerMembership) {
+    await MembershipModel.create({
+      workspaceId: workspace._id,
+      userId: owner._id,
+      role: "OWNER"
+    });
+  } else {
+    ownerMembership.role = "OWNER";
+    await ownerMembership.save();
+  }
+
+  const memberMembership = await MembershipModel.findOne({
+    workspaceId: workspace._id,
+    userId: member._id
+  });
+
+  if (!memberMembership) {
+    await MembershipModel.create({
+      workspaceId: workspace._id,
+      userId: member._id,
+      role: "MEMBER"
+    });
+  } else {
+    memberMembership.role = "MEMBER";
+    await memberMembership.save();
+  }
 
   let invite = await InviteModel.findOne({
     workspaceId: workspace._id,
