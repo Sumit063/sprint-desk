@@ -14,7 +14,8 @@ import { WorkspaceModel } from "../models/Workspace";
 const router = Router();
 
 const createWorkspaceSchema = z.object({
-  name: z.string().min(1)
+  name: z.string().min(1),
+  key: z.string().min(2).max(10).regex(/^[A-Za-z0-9]+$/)
 });
 
 const joinWorkspaceSchema = z.object({
@@ -54,15 +55,22 @@ router.post("/join", validateBody(joinWorkspaceSchema), async (req, res) => {
   }
 
   return res.json({
-    workspace: { id: workspace._id, name: workspace.name },
+    workspace: { id: workspace._id, name: workspace.name, key: workspace.key },
     role: membership.role
   });
 });
 
 router.post("/", validateBody(createWorkspaceSchema), async (req, res) => {
+  const normalizedKey = req.body.key.toUpperCase();
+  const existingKey = await WorkspaceModel.findOne({ key: normalizedKey });
+  if (existingKey) {
+    return res.status(409).json({ message: "Workspace key already in use" });
+  }
+
   const workspace = await WorkspaceModel.create({
     name: req.body.name,
-    ownerId: req.userId
+    ownerId: req.userId,
+    key: normalizedKey
   });
 
   await MembershipModel.create({
@@ -72,7 +80,7 @@ router.post("/", validateBody(createWorkspaceSchema), async (req, res) => {
   });
 
   return res.status(201).json({
-    workspace: { id: workspace._id, name: workspace.name },
+    workspace: { id: workspace._id, name: workspace.name, key: workspace.key },
     role: "OWNER"
   });
 });
@@ -80,7 +88,7 @@ router.post("/", validateBody(createWorkspaceSchema), async (req, res) => {
 router.get("/", async (req, res) => {
   const memberships = await MembershipModel.find({ userId: req.userId }).populate(
     "workspaceId",
-    "name ownerId"
+    "name ownerId key"
   );
 
   const workspaces = memberships
@@ -89,6 +97,7 @@ router.get("/", async (req, res) => {
         _id: string;
         name: string;
         ownerId: string;
+        key?: string;
       } | null;
 
       if (!workspace) {
@@ -99,6 +108,7 @@ router.get("/", async (req, res) => {
         id: workspace._id,
         name: workspace.name,
         ownerId: workspace.ownerId,
+        key: workspace.key,
         role: membership.role
       };
     })
@@ -117,7 +127,8 @@ router.get("/:id", requireWorkspaceMember, async (req, res) => {
     workspace: {
       id: workspace._id,
       name: workspace.name,
-      ownerId: workspace.ownerId
+      ownerId: workspace.ownerId,
+      key: workspace.key
     }
   });
 });

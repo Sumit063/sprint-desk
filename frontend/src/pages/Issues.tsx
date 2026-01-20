@@ -32,6 +32,7 @@ type IssueForm = z.infer<typeof issueSchema>;
 
 type Issue = {
   _id: string;
+  ticketId?: string;
   title: string;
   description: string;
   status: "OPEN" | "IN_PROGRESS" | "DONE";
@@ -337,7 +338,12 @@ export default function IssuesPage() {
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">{issue.title}</p>
+                  <p className="text-xs font-semibold uppercase text-slate-400">
+                    {issue.ticketId ?? "NO-ID"}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">
+                    {issue.title}
+                  </p>
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                     <Badge variant="outline">{statusLabels[issue.status]}</Badge>
                     <span
