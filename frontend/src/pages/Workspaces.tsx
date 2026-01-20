@@ -5,7 +5,12 @@ import { z } from "zod";
 import { useWorkspaceStore } from "@/stores/workspaces";
 
 const createSchema = z.object({
-  name: z.string().min(1, "Workspace name is required")
+  name: z.string().min(1, "Workspace name is required"),
+  key: z
+    .string()
+    .min(2, "Workspace key is required")
+    .max(10, "Keep the key short")
+    .regex(/^[A-Za-z0-9]+$/, "Use only letters and numbers")
 });
 
 const joinSchema = z.object({
@@ -38,7 +43,10 @@ export default function WorkspacesPage() {
   const handleCreate = async (values: CreateForm) => {
     setError(null);
     try {
-      await createWorkspace(values.name);
+      await createWorkspace({
+        name: values.name,
+        key: values.key.toUpperCase()
+      });
       createForm.reset();
     } catch {
       setError("Unable to create workspace");
@@ -90,6 +98,27 @@ export default function WorkspacesPage() {
                 </p>
               ) : null}
             </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700" htmlFor="key">
+                Workspace key
+              </label>
+              <input
+                className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm uppercase"
+                id="key"
+                type="text"
+                placeholder="ACME"
+                {...createForm.register("key")}
+              />
+              {createForm.formState.errors.key ? (
+                <p className="mt-1 text-xs text-red-500">
+                  {createForm.formState.errors.key.message}
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-slate-500">
+                  Used for ticket IDs, like ACME-12.
+                </p>
+              )}
+            </div>
             <button
               className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
               type="submit"
@@ -138,7 +167,12 @@ export default function WorkspacesPage() {
           ) : (
             workspaces.map((workspace) => (
               <div key={workspace.id} className="flex items-center justify-between">
-                <span className="font-medium text-slate-900">{workspace.name}</span>
+                <div>
+                  <span className="font-medium text-slate-900">{workspace.name}</span>
+                  <span className="ml-2 text-xs text-slate-500">
+                    {workspace.key ?? "—"}
+                  </span>
+                </div>
                 <span className="text-xs uppercase text-slate-500">
                   {workspace.role}
                 </span>

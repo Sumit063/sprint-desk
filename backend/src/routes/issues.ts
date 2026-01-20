@@ -6,6 +6,7 @@ import { validateBody } from "../middleware/validate";
 import { ActivityModel } from "../models/Activity";
 import { IssueModel, issuePriorities, issueStatuses } from "../models/Issue";
 import { NotificationModel } from "../models/Notification";
+import { WorkspaceModel } from "../models/Workspace";
 import { emitUserEvent, emitWorkspaceEvent } from "../socket";
 
 const router = Router({ mergeParams: true });
@@ -37,6 +38,7 @@ router.get("/", async (req, res) => {
   const status = req.query.status;
   const priority = req.query.priority;
   const assigneeId = req.query.assigneeId;
+  const ticketId = req.query.ticketId;
   const page = parseNumber(req.query.page, 1);
   const limit = Math.min(parseNumber(req.query.limit, 20), 50);
 
@@ -54,6 +56,10 @@ router.get("/", async (req, res) => {
 
   if (typeof assigneeId === "string" && assigneeId.length > 0) {
     filters.assigneeId = assigneeId;
+  }
+
+  if (typeof ticketId === "string" && ticketId.length > 0) {
+    filters.ticketId = ticketId.toUpperCase();
   }
 
   const total = await IssueModel.countDocuments(filters);
@@ -79,9 +85,26 @@ router.post(
   requireWorkspaceRole(["OWNER", "ADMIN", "MEMBER"]),
   validateBody(createIssueSchema),
   async (req, res) => {
+    const workspace = await WorkspaceModel.findOneAndUpdate(
+      { _id: req.workspaceId },
+      { $inc: { issueCounter: 1 } },
+      { new: true }
+    );
+
+    if (!workspace) {
+      return res.status(404).json({ message: "Workspace not found" });
+    }
+
+    if (!workspace.key) {
+      return res.status(400).json({ message: "Workspace key missing" });
+    }
+
+    const ticketId = `${workspace.key}-${workspace.issueCounter}`;
+
     const issue = await IssueModel.create({
       workspaceId: req.workspaceId,
       createdBy: req.userId,
+      ticketId,
       title: req.body.title,
       description: req.body.description ?? "",
       status: req.body.status ?? "OPEN",

@@ -29,6 +29,7 @@ type EditForm = z.infer<typeof editSchema>;
 
 type IssueDetail = {
   _id: string;
+  ticketId?: string;
   title: string;
   description: string;
   status: "OPEN" | "IN_PROGRESS" | "DONE";
@@ -239,9 +240,14 @@ export default function IssueDetailPage() {
           <Link className="text-xs font-medium text-slate-500" to="/app/issues">
             ? Back to issues
           </Link>
-          <h1 className="mt-2 text-2xl font-semibold text-slate-900">
-            {issueData?.title ?? "Issue details"}
-          </h1>
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <p className="text-xs font-semibold uppercase text-slate-400">
+              {issueData?.ticketId ?? "ISSUE"}
+            </p>
+            <h1 className="text-2xl font-semibold text-slate-900">
+              {issueData?.title ?? "Issue details"}
+            </h1>
+          </div>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
             {issueData ? (
               <>
