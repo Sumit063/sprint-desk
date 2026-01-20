@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import api from "@/lib/api";
 import { useWorkspaceStore } from "@/stores/workspaces";
@@ -17,15 +18,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@/components/ui/table";
-import IssueDetailSheet from "@/components/IssueDetailSheet";
 
 const issueSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -73,6 +65,12 @@ const priorityLabels: Record<Issue["priority"], string> = {
   HIGH: "High"
 };
 
+const priorityStyles: Record<Issue["priority"], string> = {
+  LOW: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  MEDIUM: "border-amber-200 bg-amber-50 text-amber-700",
+  HIGH: "border-rose-200 bg-rose-50 text-rose-700"
+};
+
 export default function IssuesPage() {
   const currentWorkspaceId = useWorkspaceStore((state) => state.currentWorkspaceId);
   const workspaces = useWorkspaceStore((state) => state.workspaces);
@@ -80,8 +78,8 @@ export default function IssuesPage() {
   const [status, setStatus] = useState<string>("");
   const [priority, setPriority] = useState<string>("");
   const [page, setPage] = useState(1);
-  const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const canCreate =
     currentWorkspace?.role === "OWNER" ||
     currentWorkspace?.role === "ADMIN" ||
@@ -319,58 +317,55 @@ export default function IssuesPage() {
           </select>
         </div>
 
-        <div className="mt-4">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Priority</TableHead>
-                <TableHead>Assignee</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={4}>Loading issues...</TableCell>
-                </TableRow>
-              ) : null}
-              {!isLoading && issues.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4}>No issues found.</TableCell>
-                </TableRow>
-              ) : null}
-              {issues.map((issue) => (
-                <TableRow
-                  key={issue._id}
-                  className="cursor-pointer hover:bg-slate-50"
-                  onClick={() => setSelectedIssueId(issue._id)}
-                >
-                  <TableCell className="font-medium text-slate-900">
-                    {issue.title}
-                    {issue.labels?.length ? (
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {issue.labels.map((label) => (
-                          <Badge key={label} variant="outline">
-                            {label}
-                          </Badge>
-                        ))}
-                      </div>
-                    ) : null}
-                  </TableCell>
-                  <TableCell>
+        <div className="mt-6 space-y-3">
+          {isLoading ? <p className="text-sm text-slate-500">Loading issues...</p> : null}
+          {!isLoading && issues.length === 0 ? (
+            <p className="text-sm text-slate-500">No issues found.</p>
+          ) : null}
+          {issues.map((issue) => (
+            <div
+              key={issue._id}
+              className="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:bg-slate-50"
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate(`/app/issues/${issue._id}`)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  navigate(`/app/issues/${issue._id}`);
+                }
+              }}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">{issue.title}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                     <Badge variant="outline">{statusLabels[issue.status]}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{priorityLabels[issue.priority]}</Badge>
-                  </TableCell>
-                  <TableCell className="text-slate-600">
-                    {issue.assigneeId?.name ?? "Unassigned"}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${priorityStyles[issue.priority]}`}
+                    >
+                      {priorityLabels[issue.priority]}
+                    </span>
+                    <span className="text-slate-400">•</span>
+                    <span className="text-blue-600 font-medium">
+                      {issue.assigneeId?.name ?? "Unassigned"}
+                    </span>
+                  </div>
+                </div>
+                {issue.labels?.length ? (
+                  <div className="flex flex-wrap gap-1">
+                    {issue.labels.map((label) => (
+                      <span
+                        key={label}
+                        className="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700"
+                      >
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ))}
         </div>
 
         <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
@@ -397,11 +392,6 @@ export default function IssuesPage() {
           </div>
         </div>
       </div>
-
-      <IssueDetailSheet
-        issueId={selectedIssueId}
-        onClose={() => setSelectedIssueId(null)}
-      />
     </div>
   );
 }

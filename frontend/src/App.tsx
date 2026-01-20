@@ -4,6 +4,7 @@ import AppShell from "@/components/AppShell";
 import LoginPage from "@/pages/Login";
 import RegisterPage from "@/pages/Register";
 import IssuesPage from "@/pages/Issues";
+import IssueDetailPage from "@/pages/IssueDetail";
 import KnowledgeBasePage from "@/pages/KnowledgeBase";
 import NotificationsPage from "@/pages/Notifications";
 import SettingsPage from "@/pages/Settings";
@@ -51,6 +52,7 @@ export default function App() {
         >
           <Route index element={<IssuesPage />} />
           <Route path="issues" element={<IssuesPage />} />
+          <Route path="issues/:issueId" element={<IssueDetailPage />} />
           <Route path="kb" element={<KnowledgeBasePage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="settings" element={<SettingsPage />} />
