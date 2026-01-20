@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import AuthShell from "@/components/AuthShell";
@@ -15,6 +16,7 @@ type LoginForm = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const login = useAuthStore((state) => state.login);
   const [formError, setFormError] = useState<string | null>(null);
+  const navigate = useNavigate();
   const {
     register,
     handleSubmit,
@@ -27,6 +29,7 @@ export default function LoginPage() {
     setFormError(null);
     try {
       await login(values);
+      navigate("/app");
     } catch {
       setFormError("Unable to sign in. Check your details and try again.");
     }

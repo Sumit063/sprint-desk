@@ -20,6 +20,7 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const canInvite = currentWorkspace?.role === "OWNER" || currentWorkspace?.role === "ADMIN";
   const canManageMembers = currentWorkspace?.role === "OWNER";
 
   const loadMembers = async () => {
@@ -100,14 +101,19 @@ export default function SettingsPage() {
             </p>
           </div>
           <button
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
             type="button"
             onClick={handleInvite}
-            disabled={!canManageMembers}
+            disabled={!canInvite}
           >
             Generate invite
           </button>
         </div>
+        {!canInvite ? (
+          <p className="mt-2 text-xs text-slate-500">
+            Only owners or admins can generate invites.
+          </p>
+        ) : null}
         {inviteCode ? (
           <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
             <p className="font-medium text-slate-700">Code: {inviteCode}</p>
@@ -120,6 +126,11 @@ export default function SettingsPage() {
 
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-semibold">Members</h2>
+        {!canManageMembers ? (
+          <p className="mt-1 text-xs text-slate-500">
+            Only owners can change member roles.
+          </p>
+        ) : null}
         <div className="mt-4 space-y-3">
           {isLoading ? <p className="text-sm text-slate-500">Loading...</p> : null}
           {members.length === 0 && !isLoading ? (
@@ -137,7 +148,7 @@ export default function SettingsPage() {
                 <p className="text-xs text-slate-500">{member.user.email}</p>
               </div>
               <select
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs"
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
                 value={member.role}
                 onChange={(event) =>
                   handleRoleChange(member.id, event.target.value as Member["role"])

@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import AuthShell from "@/components/AuthShell";
@@ -16,6 +17,7 @@ type RegisterForm = z.infer<typeof registerSchema>;
 export default function RegisterPage() {
   const registerUser = useAuthStore((state) => state.register);
   const [formError, setFormError] = useState<string | null>(null);
+  const navigate = useNavigate();
   const {
     register,
     handleSubmit,
@@ -28,6 +30,7 @@ export default function RegisterPage() {
     setFormError(null);
     try {
       await registerUser(values);
+      navigate("/app");
     } catch {
       setFormError("Unable to register. Try a different email.");
     }
