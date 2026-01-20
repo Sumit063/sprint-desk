@@ -2,12 +2,14 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
+import { createServer } from "http";
 import mongoose from "mongoose";
 import authRoutes from "./routes/auth";
 import usersRoutes from "./routes/users";
 import workspacesRoutes from "./routes/workspaces";
 import issuesRoutes from "./routes/issues";
 import commentsRoutes from "./routes/comments";
+import { initSocket } from "./socket";
 
 dotenv.config();
 
@@ -43,7 +45,10 @@ const start = async () => {
     console.warn("MONGO_URL not set, skipping MongoDB connection");
   }
 
-  app.listen(port, () => {
+  const server = createServer(app);
+  initSocket(server, corsOrigin.split(","));
+
+  server.listen(port, () => {
     console.log(`API listening on port ${port}`);
   });
 };

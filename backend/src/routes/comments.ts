@@ -6,6 +6,7 @@ import { ActivityModel } from "../models/Activity";
 import { CommentModel } from "../models/Comment";
 import { IssueModel } from "../models/Issue";
 import { MembershipModel } from "../models/Membership";
+import { emitWorkspaceEvent } from "../socket";
 
 const router = Router({ mergeParams: true });
 
@@ -71,6 +72,11 @@ router.post("/", validateBody(createCommentSchema), async (req, res) => {
   });
 
   const populated = await comment.populate("userId", "name email");
+
+  emitWorkspaceEvent(issue.workspaceId.toString(), "comment_added", {
+    issueId: issue._id.toString(),
+    commentId: comment._id.toString()
+  });
 
   return res.status(201).json({ comment: populated });
 });

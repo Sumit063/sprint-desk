@@ -5,6 +5,7 @@ import { requireWorkspaceMember, requireWorkspaceRole } from "../middleware/work
 import { validateBody } from "../middleware/validate";
 import { ActivityModel } from "../models/Activity";
 import { IssueModel, issuePriorities, issueStatuses } from "../models/Issue";
+import { emitWorkspaceEvent } from "../socket";
 
 const router = Router({ mergeParams: true });
 
@@ -97,6 +98,11 @@ router.post(
       meta: { title: issue.title }
     });
 
+    emitWorkspaceEvent(req.workspaceId, "issue_created", {
+      issueId: issue._id.toString(),
+      title: issue.title
+    });
+
     return res.status(201).json({ issue });
   }
 );
@@ -152,6 +158,11 @@ router.patch(
         actorId: req.userId,
         action: "issue_updated",
         meta: { fields }
+      });
+
+      emitWorkspaceEvent(req.workspaceId, "issue_updated", {
+        issueId: issue._id.toString(),
+        fields
       });
     }
 
