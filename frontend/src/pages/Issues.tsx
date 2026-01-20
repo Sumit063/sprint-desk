@@ -25,6 +25,7 @@ import {
   TableHeader,
   TableRow
 } from "@/components/ui/table";
+import IssueDetailSheet from "@/components/IssueDetailSheet";
 
 const issueSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -70,6 +71,7 @@ export default function IssuesPage() {
   const [status, setStatus] = useState<string>("");
   const [priority, setPriority] = useState<string>("");
   const [page, setPage] = useState(1);
+  const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const queryKey = useMemo(
@@ -286,7 +288,11 @@ export default function IssuesPage() {
                 </TableRow>
               ) : null}
               {issues.map((issue) => (
-                <TableRow key={issue._id} className="cursor-pointer hover:bg-slate-50">
+                <TableRow
+                  key={issue._id}
+                  className="cursor-pointer hover:bg-slate-50"
+                  onClick={() => setSelectedIssueId(issue._id)}
+                >
                   <TableCell className="font-medium text-slate-900">
                     {issue.title}
                     {issue.labels?.length ? (
@@ -338,6 +344,11 @@ export default function IssuesPage() {
           </div>
         </div>
       </div>
+
+      <IssueDetailSheet
+        issueId={selectedIssueId}
+        onClose={() => setSelectedIssueId(null)}
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/stores/auth";
 import WorkspaceSwitcher from "@/components/WorkspaceSwitcher";
+import { useWorkspaceSocket } from "@/hooks/useWorkspaceSocket";
 
 const navItems = [
   { label: "Issues", to: "/app/issues" },
@@ -12,6 +13,8 @@ export default function AppShell() {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
+
+  useWorkspaceSocket();
 
   const handleLogout = async () => {
     await logout();

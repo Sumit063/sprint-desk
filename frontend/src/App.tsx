@@ -8,6 +8,7 @@ import KnowledgeBasePage from "@/pages/KnowledgeBase";
 import SettingsPage from "@/pages/Settings";
 import WorkspacesPage from "@/pages/Workspaces";
 import { useAuthStore } from "@/stores/auth";
+import { Toaster } from "sonner";
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const user = useAuthStore((state) => state.user);
@@ -35,6 +36,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <Toaster richColors position="top-right" />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
