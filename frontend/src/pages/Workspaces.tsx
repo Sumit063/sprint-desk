@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useWorkspaceStore } from "@/stores/workspaces";
+import { Button } from "@/components/ui/button";
 
 const createSchema = z.object({
   name: z.string().min(1, "Workspace name is required"),
@@ -67,27 +68,30 @@ export default function WorkspacesPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold">Workspaces</h1>
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
           Join an existing workspace or create a new space for your team.
         </p>
       </div>
 
       {error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900 dark:bg-red-900/30 dark:text-red-200">
           {error}
         </div>
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <h2 className="text-lg font-semibold">Create workspace</h2>
           <form className="mt-4 space-y-3" onSubmit={createForm.handleSubmit(handleCreate)}>
             <div>
-              <label className="text-sm font-medium text-slate-700" htmlFor="name">
+              <label
+                className="text-sm font-medium text-slate-700 dark:text-slate-200"
+                htmlFor="name"
+              >
                 Name
               </label>
               <input
-                className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 id="name"
                 type="text"
                 {...createForm.register("name")}
@@ -99,11 +103,14 @@ export default function WorkspacesPage() {
               ) : null}
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-700" htmlFor="key">
+              <label
+                className="text-sm font-medium text-slate-700 dark:text-slate-200"
+                htmlFor="key"
+              >
                 Workspace key
               </label>
               <input
-                className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm uppercase"
+                className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm uppercase dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 id="key"
                 type="text"
                 placeholder="ACME"
@@ -114,30 +121,29 @@ export default function WorkspacesPage() {
                   {createForm.formState.errors.key.message}
                 </p>
               ) : (
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                   Used for ticket IDs, like ACME-12.
                 </p>
               )}
             </div>
-            <button
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
-              type="submit"
-              disabled={createForm.formState.isSubmitting}
-            >
+            <Button type="submit" disabled={createForm.formState.isSubmitting}>
               Create workspace
-            </button>
+            </Button>
           </form>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <h2 className="text-lg font-semibold">Join workspace</h2>
           <form className="mt-4 space-y-3" onSubmit={joinForm.handleSubmit(handleJoin)}>
             <div>
-              <label className="text-sm font-medium text-slate-700" htmlFor="code">
+              <label
+                className="text-sm font-medium text-slate-700 dark:text-slate-200"
+                htmlFor="code"
+              >
                 Invite code
               </label>
               <input
-                className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 id="code"
                 type="text"
                 {...joinForm.register("code")}
@@ -148,32 +154,30 @@ export default function WorkspacesPage() {
                 </p>
               ) : null}
             </div>
-            <button
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
-              type="submit"
-              disabled={joinForm.formState.isSubmitting}
-            >
+            <Button type="submit" disabled={joinForm.formState.isSubmitting}>
               Join workspace
-            </button>
+            </Button>
           </form>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <h2 className="text-lg font-semibold">Your workspaces</h2>
-        <div className="mt-4 space-y-2 text-sm text-slate-600">
+        <div className="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-400">
           {workspaces.length === 0 ? (
             <p>No workspaces yet.</p>
           ) : (
             workspaces.map((workspace) => (
               <div key={workspace.id} className="flex items-center justify-between">
                 <div>
-                  <span className="font-medium text-slate-900">{workspace.name}</span>
-                  <span className="ml-2 text-xs text-slate-500">
-                    {workspace.key ?? "—"}
+                  <span className="font-medium text-slate-900 dark:text-slate-100">
+                    {workspace.name}
+                  </span>
+                  <span className="ml-2 text-xs text-slate-500 dark:text-slate-400">
+                    {workspace.key ?? "-"}
                   </span>
                 </div>
-                <span className="text-xs uppercase text-slate-500">
+                <span className="text-xs uppercase text-slate-500 dark:text-slate-400">
                   {workspace.role}
                 </span>
               </div>
