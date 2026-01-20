@@ -33,7 +33,7 @@ export const requireWorkspaceMember: RequestHandler = async (req, res, next) => 
 };
 
 export function requireWorkspaceRole(roles: (typeof workspaceRoles)[number][]) {
-  const minRank = Math.max(...roles.map((role) => roleRank[role]));
+  const minRank = Math.min(...roles.map((role) => roleRank[role]));
   return ((req, res, next) => {
     if (!req.workspaceRole) {
       return res.status(403).json({ message: "Forbidden" });
