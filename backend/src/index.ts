@@ -9,6 +9,7 @@ import usersRoutes from "./routes/users";
 import workspacesRoutes from "./routes/workspaces";
 import issuesRoutes from "./routes/issues";
 import commentsRoutes from "./routes/comments";
+import notificationsRoutes from "./routes/notifications";
 import { initSocket } from "./socket";
 
 dotenv.config();
@@ -30,6 +31,7 @@ app.use("/api/users", usersRoutes);
 app.use("/api/workspaces", workspacesRoutes);
 app.use("/api/workspaces/:id/issues", issuesRoutes);
 app.use("/api/issues/:issueId/comments", commentsRoutes);
+app.use("/api/notifications", notificationsRoutes);
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, status: "up" });

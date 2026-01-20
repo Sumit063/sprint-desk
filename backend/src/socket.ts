@@ -7,6 +7,7 @@ import { MembershipModel } from "./models/Membership";
 let io: Server | null = null;
 
 export const workspaceRoom = (workspaceId: string) => `workspace:${workspaceId}`;
+export const userRoom = (userId: string) => `user:${userId}`;
 
 export const initSocket = (server: HttpServer, corsOrigins: string[]) => {
   io = new Server(server, {
@@ -35,6 +36,7 @@ export const initSocket = (server: HttpServer, corsOrigins: string[]) => {
   });
 
   io.on("connection", (socket) => {
+    socket.join(userRoom(socket.data.userId));
     socket.on("join_workspace", async (workspaceId: string, ack?: (payload: any) => void) => {
       if (!workspaceId) {
         ack?.({ ok: false, message: "Workspace required" });
@@ -68,4 +70,15 @@ export const emitWorkspaceEvent = (
     return;
   }
   io.to(workspaceRoom(workspaceId)).emit(event, payload);
+};
+
+export const emitUserEvent = (
+  userId: string,
+  event: string,
+  payload: Record<string, unknown>
+) => {
+  if (!io) {
+    return;
+  }
+  io.to(userRoom(userId)).emit(event, payload);
 };

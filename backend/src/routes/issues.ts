@@ -5,7 +5,8 @@ import { requireWorkspaceMember, requireWorkspaceRole } from "../middleware/work
 import { validateBody } from "../middleware/validate";
 import { ActivityModel } from "../models/Activity";
 import { IssueModel, issuePriorities, issueStatuses } from "../models/Issue";
-import { emitWorkspaceEvent } from "../socket";
+import { NotificationModel } from "../models/Notification";
+import { emitUserEvent, emitWorkspaceEvent } from "../socket";
 
 const router = Router({ mergeParams: true });
 
@@ -103,6 +104,20 @@ router.post(
       title: issue.title
     });
 
+    if (issue.assigneeId && issue.assigneeId.toString() !== req.userId) {
+      const notification = await NotificationModel.create({
+        userId: issue.assigneeId,
+        workspaceId: req.workspaceId,
+        issueId: issue._id,
+        type: "assigned",
+        message: `You were assigned to issue \"${issue.title}\"`
+      });
+      emitUserEvent(issue.assigneeId.toString(), "notification_created", {
+        notificationId: notification._id.toString(),
+        message: notification.message
+      });
+    }
+
     return res.status(201).json({ issue });
   }
 );
@@ -144,6 +159,7 @@ router.patch(
     if (updates.status !== undefined) issue.status = updates.status;
     if (updates.priority !== undefined) issue.priority = updates.priority;
     if (updates.labels !== undefined) issue.labels = updates.labels;
+    const previousAssignee = issue.assigneeId?.toString() ?? null;
     if (updates.assigneeId !== undefined) issue.assigneeId = updates.assigneeId;
     if (updates.dueDate !== undefined) {
       issue.dueDate = updates.dueDate ? new Date(updates.dueDate) : null;
@@ -163,6 +179,26 @@ router.patch(
       emitWorkspaceEvent(req.workspaceId, "issue_updated", {
         issueId: issue._id.toString(),
         fields
+      });
+    }
+
+    const newAssignee = issue.assigneeId?.toString() ?? null;
+    if (
+      updates.assigneeId !== undefined &&
+      newAssignee &&
+      newAssignee !== previousAssignee &&
+      newAssignee !== req.userId
+    ) {
+      const notification = await NotificationModel.create({
+        userId: issue.assigneeId,
+        workspaceId: req.workspaceId,
+        issueId: issue._id,
+        type: "assigned",
+        message: `You were assigned to issue \"${issue.title}\"`
+      });
+      emitUserEvent(newAssignee, "notification_created", {
+        notificationId: notification._id.toString(),
+        message: notification.message
       });
     }
 
