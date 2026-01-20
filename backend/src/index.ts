@@ -5,6 +5,7 @@ import express from "express";
 import mongoose from "mongoose";
 import authRoutes from "./routes/auth";
 import usersRoutes from "./routes/users";
+import workspacesRoutes from "./routes/workspaces";
 
 dotenv.config();
 
@@ -22,6 +23,7 @@ app.use(cookieParser());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);
+app.use("/api/workspaces", workspacesRoutes);
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, status: "up" });
