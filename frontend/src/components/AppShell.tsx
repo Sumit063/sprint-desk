@@ -6,6 +6,7 @@ import { useWorkspaceSocket } from "@/hooks/useWorkspaceSocket";
 const navItems = [
   { label: "Issues", to: "/app/issues" },
   { label: "Knowledge Base", to: "/app/kb" },
+  { label: "Notifications", to: "/app/notifications" },
   { label: "Settings", to: "/app/settings" }
 ];
 

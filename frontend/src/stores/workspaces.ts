@@ -17,6 +17,7 @@ type WorkspaceState = {
   createWorkspace: (name: string) => Promise<void>;
   joinWorkspace: (code: string) => Promise<void>;
   setCurrentWorkspace: (id: string) => void;
+  reset: () => void;
 };
 
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
@@ -29,7 +30,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     try {
       const res = await api.get("/api/workspaces");
       const workspaces = (res.data.workspaces ?? []) as Workspace[];
-      const currentId = get().currentWorkspaceId ?? workspaces[0]?.id ?? null;
+      const storedId = get().currentWorkspaceId;
+      const currentId = workspaces.some((workspace) => workspace.id === storedId)
+        ? storedId
+        : workspaces[0]?.id ?? null;
       set({ workspaces, currentWorkspaceId: currentId });
     } catch {
       set({ error: "Unable to load workspaces" });
@@ -62,5 +66,6 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       };
     });
   },
-  setCurrentWorkspace: (id) => set({ currentWorkspaceId: id })
+  setCurrentWorkspace: (id) => set({ currentWorkspaceId: id }),
+  reset: () => set({ workspaces: [], currentWorkspaceId: null, isLoading: false, error: null })
 }));

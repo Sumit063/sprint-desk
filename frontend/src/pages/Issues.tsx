@@ -32,7 +32,8 @@ const issueSchema = z.object({
   description: z.string().optional(),
   status: z.enum(["OPEN", "IN_PROGRESS", "DONE"]).default("OPEN"),
   priority: z.enum(["LOW", "MEDIUM", "HIGH"]).default("MEDIUM"),
-  labels: z.string().optional()
+  labels: z.string().optional(),
+  assigneeId: z.string().optional()
 });
 
 type IssueForm = z.infer<typeof issueSchema>;
@@ -44,7 +45,7 @@ type Issue = {
   status: "OPEN" | "IN_PROGRESS" | "DONE";
   priority: "LOW" | "MEDIUM" | "HIGH";
   labels: string[];
-  assigneeId?: { name: string; email: string } | null;
+  assigneeId?: { _id: string; name: string; email: string } | null;
   createdBy?: { name: string; email: string } | null;
   createdAt: string;
 };
@@ -52,6 +53,12 @@ type Issue = {
 type IssueResponse = {
   issues: Issue[];
   pagination: { page: number; limit: number; total: number };
+};
+
+type Member = {
+  id: string;
+  role: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
+  user: { id: string; name: string; email: string };
 };
 
 const statusLabels: Record<Issue["status"], string> = {
@@ -68,11 +75,17 @@ const priorityLabels: Record<Issue["priority"], string> = {
 
 export default function IssuesPage() {
   const currentWorkspaceId = useWorkspaceStore((state) => state.currentWorkspaceId);
+  const workspaces = useWorkspaceStore((state) => state.workspaces);
+  const currentWorkspace = workspaces.find((item) => item.id === currentWorkspaceId);
   const [status, setStatus] = useState<string>("");
   const [priority, setPriority] = useState<string>("");
   const [page, setPage] = useState(1);
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
   const queryClient = useQueryClient();
+  const canCreate =
+    currentWorkspace?.role === "OWNER" ||
+    currentWorkspace?.role === "ADMIN" ||
+    currentWorkspace?.role === "MEMBER";
 
   const queryKey = useMemo(
     () => ["issues", currentWorkspaceId, status, priority, page],
@@ -99,6 +112,16 @@ export default function IssuesPage() {
     enabled: Boolean(currentWorkspaceId)
   });
 
+  const { data: membersData } = useQuery({
+    queryKey: ["workspace-members", currentWorkspaceId],
+    queryFn: async () => {
+      if (!currentWorkspaceId) return [];
+      const res = await api.get(`/api/workspaces/${currentWorkspaceId}/members`);
+      return res.data.members as Member[];
+    },
+    enabled: Boolean(currentWorkspaceId)
+  });
+
   const createMutation = useMutation({
     mutationFn: async (values: IssueForm) => {
       if (!currentWorkspaceId) return;
@@ -113,7 +136,8 @@ export default function IssuesPage() {
         description: values.description ?? "",
         status: values.status,
         priority: values.priority,
-        labels
+        labels,
+        assigneeId: values.assigneeId || null
       });
     },
     onSuccess: async () => {
@@ -131,7 +155,14 @@ export default function IssuesPage() {
 
   const handleCreate = async (values: IssueForm) => {
     await createMutation.mutateAsync(values);
-    form.reset({ title: "", description: "", labels: "", status: "OPEN", priority: "MEDIUM" });
+    form.reset({
+      title: "",
+      description: "",
+      labels: "",
+      status: "OPEN",
+      priority: "MEDIUM",
+      assigneeId: ""
+    });
   };
 
   if (!currentWorkspaceId) {
@@ -160,7 +191,7 @@ export default function IssuesPage() {
         </div>
         <Dialog>
           <DialogTrigger asChild>
-            <Button>Create Issue</Button>
+            <Button disabled={!canCreate}>Create Issue</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -223,15 +254,37 @@ export default function IssuesPage() {
                 </label>
                 <Input id="labels" placeholder="api, ui" {...form.register("labels")} />
               </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700" htmlFor="assigneeId">
+                  Assignee
+                </label>
+                <select
+                  id="assigneeId"
+                  className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+                  {...form.register("assigneeId")}
+                >
+                  <option value="">Unassigned</option>
+                  {membersData?.map((member) => (
+                    <option key={member.user.id} value={member.user.id}>
+                      {member.user.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="flex items-center justify-end gap-3">
                 <Button variant="outline" type="button" onClick={() => form.reset()}>
                   Reset
                 </Button>
-                <Button type="submit" disabled={createMutation.isPending}>
+                <Button type="submit" disabled={createMutation.isPending || !canCreate}>
                   Create issue
                 </Button>
               </div>
             </form>
+            {!canCreate ? (
+              <p className="mt-3 text-xs text-slate-500">
+                Only owners, admins, and members can create issues.
+              </p>
+            ) : null}
           </DialogContent>
         </Dialog>
       </div>

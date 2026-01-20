@@ -63,14 +63,23 @@ export function useWorkspaceSocket() {
       }
     };
 
+    const handleNotification = (payload: { message?: string }) => {
+      if (payload.message) {
+        toast.message(payload.message);
+      }
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    };
+
     socket.on("issue_created", handleIssueCreated);
     socket.on("issue_updated", handleIssueUpdated);
     socket.on("comment_added", handleCommentAdded);
+    socket.on("notification_created", handleNotification);
 
     return () => {
       socket?.off("issue_created", handleIssueCreated);
       socket?.off("issue_updated", handleIssueUpdated);
       socket?.off("comment_added", handleCommentAdded);
+      socket?.off("notification_created", handleNotification);
     };
   }, [workspaceId, queryClient]);
 }

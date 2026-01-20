@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import api, { getAccessToken, setAccessToken } from "@/lib/api";
+import { useWorkspaceStore } from "@/stores/workspaces";
 
 type User = {
   id: string;
@@ -49,5 +50,6 @@ export const useAuthStore = create<AuthState>((set) => ({
     await api.post("/api/auth/logout");
     setAccessToken(null);
     set({ accessToken: null, user: null });
+    useWorkspaceStore.getState().reset();
   }
 }));
