@@ -34,8 +34,12 @@ const run = async () => {
   if (!workspace) {
     workspace = await WorkspaceModel.create({
       name: "Demo Workspace",
-      ownerId: owner._id
+      ownerId: owner._id,
+      key: "DEMO"
     });
+  } else if (!workspace.key) {
+    workspace.key = "DEMO";
+    await workspace.save();
   }
 
   const ownerMembership = await MembershipModel.findOne({

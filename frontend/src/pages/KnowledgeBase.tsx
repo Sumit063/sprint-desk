@@ -29,6 +29,7 @@ type Article = {
 
 type Issue = {
   _id: string;
+  ticketId?: string;
   title: string;
   status: "OPEN" | "IN_PROGRESS" | "DONE";
 };
@@ -39,6 +40,7 @@ export default function KnowledgeBasePage() {
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
   const [selectedIssueIds, setSelectedIssueIds] = useState<string[]>([]);
+  const [linkInput, setLinkInput] = useState("");
 
   const form = useForm<ArticleForm>({
     resolver: zodResolver(articleSchema),
@@ -164,6 +166,34 @@ export default function KnowledgeBasePage() {
   const articles = articlesData ?? [];
   const issues = issuesData ?? [];
 
+  const handleLinkById = async () => {
+    const trimmed = linkInput.trim().toUpperCase();
+    if (!trimmed) return;
+    try {
+      let match = issues.find(
+        (issue) => issue.ticketId?.toUpperCase() === trimmed
+      );
+      if (!match && currentWorkspaceId) {
+        const res = await api.get(`/api/workspaces/${currentWorkspaceId}/issues`, {
+          params: { ticketId: trimmed, limit: 1 }
+        });
+        match = (res.data.issues as Issue[])[0];
+      }
+
+      if (!match) {
+        toast.error("Issue ID not found in this workspace");
+        return;
+      }
+
+      setSelectedIssueIds((prev) =>
+        prev.includes(match._id) ? prev : [...prev, match._id]
+      );
+      setLinkInput("");
+    } catch {
+      toast.error("Unable to look up that issue ID");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -286,6 +316,17 @@ export default function KnowledgeBasePage() {
             <p className="mt-1 text-sm text-slate-500">
               Attach related work items to keep context in one place.
             </p>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <Input
+                placeholder="Enter issue ID (e.g. ACME-12)"
+                value={linkInput}
+                onChange={(event) => setLinkInput(event.target.value)}
+                className="max-w-xs"
+              />
+              <Button type="button" variant="outline" size="sm" onClick={handleLinkById}>
+                Link issue
+              </Button>
+            </div>
             <div className="mt-4 flex flex-wrap gap-2">
               {issues.length === 0 ? (
                 <p className="text-sm text-slate-500">No issues to link.</p>
@@ -309,7 +350,7 @@ export default function KnowledgeBasePage() {
                           : "border-slate-200 text-slate-600"
                       }`}
                     >
-                      {issue.title}
+                      {issue.ticketId ?? "NO-ID"} · {issue.title}
                       <Badge variant="outline" className="ml-2">
                         {issue.status}
                       </Badge>

@@ -4,6 +4,7 @@ import api from "@/lib/api";
 type Workspace = {
   id: string;
   name: string;
+  key?: string;
   ownerId?: string;
   role: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
 };
@@ -14,7 +15,7 @@ type WorkspaceState = {
   isLoading: boolean;
   error: string | null;
   fetchWorkspaces: () => Promise<void>;
-  createWorkspace: (name: string) => Promise<void>;
+  createWorkspace: (payload: { name: string; key: string }) => Promise<void>;
   joinWorkspace: (code: string) => Promise<void>;
   setCurrentWorkspace: (id: string) => void;
   reset: () => void;
@@ -41,8 +42,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       set({ isLoading: false });
     }
   },
-  createWorkspace: async (name) => {
-    const res = await api.post("/api/workspaces", { name });
+  createWorkspace: async (payload) => {
+    const res = await api.post("/api/workspaces", payload);
     const workspace = {
       ...(res.data.workspace as Workspace),
       role: res.data.role as Workspace["role"]
