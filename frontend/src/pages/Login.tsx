@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -17,7 +17,13 @@ type LoginForm = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const login = useAuthStore((state) => state.login);
   const loginWithGoogle = useAuthStore((state) => state.loginWithGoogle);
+  const requestOtp = useAuthStore((state) => state.requestOtp);
+  const verifyOtp = useAuthStore((state) => state.verifyOtp);
   const [formError, setFormError] = useState<string | null>(null);
+  const [otpEmail, setOtpEmail] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpStep, setOtpStep] = useState<"request" | "verify">("request");
+  const [otpBusy, setOtpBusy] = useState(false);
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
@@ -36,6 +42,44 @@ export default function LoginPage() {
       navigate("/app");
     } catch {
       setFormError("Unable to sign in. Check your details and try again.");
+    }
+  };
+
+  const handleOtpRequest = async (event: FormEvent) => {
+    event.preventDefault();
+    const normalizedEmail = otpEmail.trim();
+    if (!normalizedEmail || !normalizedEmail.includes("@")) {
+      toast.error("Enter a valid email address");
+      return;
+    }
+    setOtpBusy(true);
+    try {
+      await requestOtp(normalizedEmail);
+      toast.success("OTP sent");
+      setOtpEmail(normalizedEmail);
+      setOtpStep("verify");
+    } catch {
+      toast.error("Unable to send OTP");
+    } finally {
+      setOtpBusy(false);
+    }
+  };
+
+  const handleOtpVerify = async (event: FormEvent) => {
+    event.preventDefault();
+    const normalizedEmail = otpEmail.trim();
+    if (!/^\d{6}$/.test(otpCode)) {
+      toast.error("Enter the 6-digit code");
+      return;
+    }
+    setOtpBusy(true);
+    try {
+      await verifyOtp({ email: normalizedEmail, code: otpCode });
+      navigate("/app");
+    } catch {
+      toast.error("OTP verification failed");
+    } finally {
+      setOtpBusy(false);
     }
   };
 
@@ -174,6 +218,70 @@ export default function LoginPage() {
           </div>
         </>
       ) : null}
+      <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50/70 p-4 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-200">
+        <div className="flex items-center justify-between">
+          <p className="font-medium">Email OTP</p>
+          {otpStep === "verify" ? (
+            <button
+              type="button"
+              className="text-xs font-medium text-blue-600 hover:text-blue-700"
+              onClick={() => {
+                setOtpStep("request");
+                setOtpCode("");
+              }}
+            >
+              Change email
+            </button>
+          ) : null}
+        </div>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          {otpStep === "verify"
+            ? `Code sent to ${otpEmail}`
+            : "We will email a 6-digit code for a quick sign-in."}
+        </p>
+        <form
+          className="mt-4 space-y-3"
+          onSubmit={otpStep === "verify" ? handleOtpVerify : handleOtpRequest}
+        >
+          <div>
+            <label className="text-xs font-medium text-slate-600 dark:text-slate-300" htmlFor="otp-email">
+              Email
+            </label>
+            <input
+              className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              id="otp-email"
+              type="email"
+              value={otpEmail}
+              onChange={(event) => setOtpEmail(event.target.value)}
+              disabled={otpStep === "verify"}
+            />
+          </div>
+          {otpStep === "verify" ? (
+            <div>
+              <label className="text-xs font-medium text-slate-600 dark:text-slate-300" htmlFor="otp-code">
+                Code
+              </label>
+              <input
+                className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm tracking-[0.4em] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                id="otp-code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                value={otpCode}
+                onChange={(event) => setOtpCode(event.target.value.trim())}
+              />
+            </div>
+          ) : null}
+          <button
+            className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+            type="submit"
+            disabled={otpBusy}
+          >
+            {otpStep === "verify" ? "Verify code" : "Send OTP"}
+          </button>
+        </form>
+      </div>
     </AuthShell>
   );
 }

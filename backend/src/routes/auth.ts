@@ -2,15 +2,23 @@ import crypto from "crypto";
 import { Router, type Response } from "express";
 import bcrypt from "bcryptjs";
 import { OAuth2Client } from "google-auth-library";
+import nodemailer from "nodemailer";
 import { z } from "zod";
+import { OtpModel } from "../models/Otp";
 import { RefreshTokenModel } from "../models/RefreshToken";
 import { UserModel } from "../models/User";
-import { authLimiter } from "../middleware/rateLimit";
+import { authLimiter, otpLimiter } from "../middleware/rateLimit";
 import { validateBody } from "../middleware/validate";
 import {
   googleClientId,
+  isProd,
   refreshCookieName,
-  refreshCookieOptions
+  refreshCookieOptions,
+  smtpFrom,
+  smtpHost,
+  smtpPass,
+  smtpPort,
+  smtpUser
 } from "../config";
 import {
   createAccessToken,
@@ -21,6 +29,17 @@ import {
 
 const router = Router();
 const googleClient = new OAuth2Client(googleClientId);
+const otpTtlMinutes = 10;
+const otpMaxAttempts = 5;
+const smtpEnabled = Boolean(smtpHost && smtpPort && smtpUser && smtpPass && smtpFrom);
+const otpTransporter = smtpEnabled
+  ? nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: { user: smtpUser, pass: smtpPass }
+    })
+  : null;
 
 router.use(authLimiter);
 
@@ -37,6 +56,15 @@ const loginSchema = z.object({
 
 const googleSchema = z.object({
   credential: z.string().min(1)
+});
+
+const otpRequestSchema = z.object({
+  email: z.string().email()
+});
+
+const otpVerifySchema = z.object({
+  email: z.string().email(),
+  code: z.string().regex(/^\d{6}$/)
 });
 
 async function issueTokens(
@@ -57,6 +85,27 @@ async function issueTokens(
     accessToken,
     user: { id: user._id, email: user.email, name: user.name }
   };
+}
+
+function generateOtpCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+async function deliverOtp(email: string, code: string) {
+  if (!otpTransporter) {
+    if (isProd) {
+      throw new Error("SMTP not configured");
+    }
+    console.log(`[DEV OTP] ${email} -> ${code}`);
+    return;
+  }
+
+  await otpTransporter.sendMail({
+    from: smtpFrom,
+    to: email,
+    subject: "Your SprintDesk login code",
+    text: `Your SprintDesk code is ${code}. It expires in ${otpTtlMinutes} minutes.`
+  });
 }
 
 router.post("/register", validateBody(registerSchema), async (req, res) => {
@@ -153,6 +202,95 @@ router.post("/google", validateBody(googleSchema), async (req, res) => {
     return res.status(401).json({ message: "Google token invalid" });
   }
 });
+
+router.post(
+  "/otp/request",
+  otpLimiter,
+  validateBody(otpRequestSchema),
+  async (req, res) => {
+    const email = req.body.email.toLowerCase();
+    const code = generateOtpCode();
+    const codeHash = await bcrypt.hash(code, 10);
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + otpTtlMinutes * 60 * 1000);
+
+    await OtpModel.findOneAndUpdate(
+      { email },
+      {
+        $set: {
+          codeHash,
+          expiresAt,
+          attempts: 0,
+          lastSentAt: now
+        },
+        $setOnInsert: {
+          createdAt: now
+        }
+      },
+      { upsert: true }
+    );
+
+    try {
+      await deliverOtp(email, code);
+    } catch {
+      return res.status(500).json({ message: "OTP delivery unavailable" });
+    }
+
+    return res.json({ message: "OTP sent" });
+  }
+);
+
+router.post(
+  "/otp/verify",
+  otpLimiter,
+  validateBody(otpVerifySchema),
+  async (req, res) => {
+    const email = req.body.email.toLowerCase();
+    const code = req.body.code;
+
+    const record = await OtpModel.findOne({ email });
+    if (!record) {
+      return res.status(401).json({ message: "Invalid or expired code" });
+    }
+
+    if (record.expiresAt < new Date()) {
+      await OtpModel.deleteMany({ email });
+      return res.status(401).json({ message: "Invalid or expired code" });
+    }
+
+    if (record.attempts >= otpMaxAttempts) {
+      await OtpModel.deleteMany({ email });
+      return res.status(429).json({ message: "Too many attempts" });
+    }
+
+    const matches = await bcrypt.compare(code, record.codeHash);
+    if (!matches) {
+      record.attempts += 1;
+      await record.save();
+      return res.status(401).json({ message: "Invalid or expired code" });
+    }
+
+    await OtpModel.deleteMany({ email });
+
+    let user = await UserModel.findOne({ email });
+    if (!user) {
+      const passwordHash = await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 10);
+      const name = email.split("@")[0];
+      user = await UserModel.create({
+        email,
+        name,
+        passwordHash,
+        provider: "otp"
+      });
+    } else if (!user.provider || user.provider === "local") {
+      user.provider = "otp";
+      await user.save();
+    }
+
+    const payload = await issueTokens(res, user);
+    return res.json(payload);
+  }
+);
 
 router.post("/refresh", async (req, res) => {
   const token = req.cookies?.[refreshCookieName];
