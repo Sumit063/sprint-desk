@@ -7,7 +7,7 @@ const userSchema = new Schema(
     passwordHash: { type: String, required: true },
     provider: {
       type: String,
-      enum: ["local", "google", "otp"],
+      enum: ["local", "google", "otp", "demo"],
       default: "local"
     },
     googleId: { type: String, unique: true, sparse: true }

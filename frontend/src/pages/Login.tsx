@@ -19,11 +19,13 @@ export default function LoginPage() {
   const loginWithGoogle = useAuthStore((state) => state.loginWithGoogle);
   const requestOtp = useAuthStore((state) => state.requestOtp);
   const verifyOtp = useAuthStore((state) => state.verifyOtp);
+  const loginAsDemo = useAuthStore((state) => state.loginAsDemo);
   const [formError, setFormError] = useState<string | null>(null);
   const [otpEmail, setOtpEmail] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [otpStep, setOtpStep] = useState<"request" | "verify">("request");
   const [otpBusy, setOtpBusy] = useState(false);
+  const [demoBusy, setDemoBusy] = useState<"owner" | "member" | null>(null);
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
@@ -80,6 +82,18 @@ export default function LoginPage() {
       toast.error("OTP verification failed");
     } finally {
       setOtpBusy(false);
+    }
+  };
+
+  const handleDemoLogin = async (type: "owner" | "member") => {
+    setDemoBusy(type);
+    try {
+      await loginAsDemo(type);
+      navigate("/app");
+    } catch {
+      toast.error("Demo login unavailable");
+    } finally {
+      setDemoBusy(null);
     }
   };
 
@@ -281,6 +295,24 @@ export default function LoginPage() {
             {otpStep === "verify" ? "Verify code" : "Send OTP"}
           </button>
         </form>
+      </div>
+      <div className="mt-4 grid gap-2">
+        <button
+          className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+          type="button"
+          disabled={demoBusy !== null}
+          onClick={() => handleDemoLogin("owner")}
+        >
+          {demoBusy === "owner" ? "Signing in..." : "Continue as Demo Owner"}
+        </button>
+        <button
+          className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+          type="button"
+          disabled={demoBusy !== null}
+          onClick={() => handleDemoLogin("member")}
+        >
+          {demoBusy === "member" ? "Signing in..." : "Continue as Demo Member"}
+        </button>
       </div>
     </AuthShell>
   );

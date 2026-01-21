@@ -10,6 +10,7 @@ import { UserModel } from "../models/User";
 import { authLimiter, otpLimiter } from "../middleware/rateLimit";
 import { validateBody } from "../middleware/validate";
 import {
+  demoMode,
   googleClientId,
   isProd,
   refreshCookieName,
@@ -65,6 +66,10 @@ const otpRequestSchema = z.object({
 const otpVerifySchema = z.object({
   email: z.string().email(),
   code: z.string().regex(/^\d{6}$/)
+});
+
+const demoSchema = z.object({
+  type: z.enum(["owner", "member"])
 });
 
 async function issueTokens(
@@ -291,6 +296,22 @@ router.post(
     return res.json(payload);
   }
 );
+
+router.post("/demo", validateBody(demoSchema), async (req, res) => {
+  if (!demoMode) {
+    return res.status(403).json({ message: "Demo mode disabled" });
+  }
+
+  const email =
+    req.body.type === "owner" ? "demo.owner@sprintdesk.dev" : "demo.member@sprintdesk.dev";
+  const user = await UserModel.findOne({ email });
+  if (!user) {
+    return res.status(404).json({ message: "Demo user not found" });
+  }
+
+  const payload = await issueTokens(res, user);
+  return res.json(payload);
+});
 
 router.post("/refresh", async (req, res) => {
   const token = req.cookies?.[refreshCookieName];
