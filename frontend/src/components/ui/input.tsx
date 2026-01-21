@@ -6,7 +6,7 @@ export const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"in
     <input
       ref={ref}
       className={cn(
-        "h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500",
+        "h-10 w-full rounded-md border border-border bg-surface px-3 text-sm text-foreground placeholder:text-foreground-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         className
       )}
       {...props}
@@ -15,3 +15,4 @@ export const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"in
 );
 
 Input.displayName = "Input";
+

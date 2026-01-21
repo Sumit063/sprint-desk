@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const typeLabels: Record<string, string> = {
   assigned: "Assigned",
@@ -63,73 +64,83 @@ export default function NotificationsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-          Notifications
-        </h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+        <h1 className="text-2xl font-semibold">Notifications</h1>
+        <p className="mt-1 text-sm text-foreground-muted">
           Mentions and assignments across your workspaces.
         </p>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="rounded-md border border-border bg-surface p-6">
         {isLoading ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">Loading...</p>
+          <p className="text-sm text-foreground-muted">Loading...</p>
         ) : null}
         {!isLoading && notifications.length === 0 ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            You're all caught up.
-          </p>
+          <p className="text-sm text-foreground-muted">You're all caught up.</p>
         ) : null}
-        <div className="space-y-3">
-          {notifications.map((note) => (
-            <div
-              key={note._id}
-              className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3 transition ${
-                note.readAt
-                  ? "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
-                  : "border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/40"
-              }`}
-              role="button"
-              tabIndex={0}
-              onClick={() => {
-                if (note.issueId) {
-                  navigate(`/app/issues/${note.issueId}`);
-                }
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && note.issueId) {
-                  navigate(`/app/issues/${note.issueId}`);
-                }
-              }}
-            >
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                    {note.message}
-                  </p>
-                  {!note.readAt ? <Badge variant="outline">Unread</Badge> : null}
-                </div>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  {typeLabels[note.type] ?? "Notification"} -{" "}
-                  {new Date(note.createdAt).toLocaleString()}
-                </p>
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  markRead.mutate(note._id);
-                }}
-                onKeyDown={(event) => event.stopPropagation()}
-                disabled={Boolean(note.readAt) || markRead.isPending}
-              >
-                Mark read
-              </Button>
-            </div>
-          ))}
-        </div>
+        {notifications.length ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Type</TableHead>
+                <TableHead>Message</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {notifications.map((note) => (
+                <TableRow
+                  key={note._id}
+                  className={note.readAt ? "" : "bg-muted"}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    if (note.issueId) {
+                      navigate(`/app/issues/${note.issueId}`);
+                    }
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && note.issueId) {
+                      navigate(`/app/issues/${note.issueId}`);
+                    }
+                  }}
+                >
+                  <TableCell className="text-foreground-muted">
+                    {typeLabels[note.type] ?? "Notification"}
+                  </TableCell>
+                  <TableCell className="font-medium text-foreground">{note.message}</TableCell>
+                  <TableCell className="text-foreground-muted">
+                    {new Date(note.createdAt).toLocaleString()}
+                  </TableCell>
+                  <TableCell>
+                    {!note.readAt ? (
+                      <Badge variant="outline">Unread</Badge>
+                    ) : (
+                      <span className="text-foreground-muted">Read</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        markRead.mutate(note._id);
+                      }}
+                      onKeyDown={(event) => event.stopPropagation()}
+                      disabled={Boolean(note.readAt) || markRead.isPending}
+                    >
+                      Mark read
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : null}
       </div>
     </div>
   );
 }
+

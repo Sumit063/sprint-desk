@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
+import { User } from "lucide-react";
 import api from "@/lib/api";
 import { useWorkspaceStore } from "@/stores/workspaces";
 import { useAuthStore } from "@/stores/auth";
@@ -19,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const issueSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -68,9 +70,9 @@ const priorityLabels: Record<Issue["priority"], string> = {
 };
 
 const priorityStyles: Record<Issue["priority"], string> = {
-  LOW: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  MEDIUM: "border-amber-200 bg-amber-50 text-amber-700",
-  HIGH: "border-rose-200 bg-rose-50 text-rose-700"
+  LOW: "border-border bg-muted text-foreground-muted",
+  MEDIUM: "border-border bg-muted text-foreground",
+  HIGH: "border-border bg-muted text-accent"
 };
 
 export default function IssuesPage() {
@@ -183,9 +185,9 @@ export default function IssuesPage() {
 
   if (!currentWorkspaceId) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="rounded-md border border-border bg-surface p-6">
         <h2 className="text-lg font-semibold">Select a workspace</h2>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+        <p className="mt-2 text-sm text-foreground-muted">
           Choose a workspace from the sidebar to start tracking issues.
         </p>
       </div>
@@ -201,7 +203,7 @@ export default function IssuesPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Issues</h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+          <p className="mt-1 text-sm text-foreground-muted">
             Track work, assign owners, and keep progress visible.
           </p>
         </div>
@@ -218,30 +220,30 @@ export default function IssuesPage() {
             </DialogHeader>
             <form className="mt-4 space-y-4" onSubmit={form.handleSubmit(handleCreate)}>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700" htmlFor="title">
+                <label className="text-sm font-medium text-foreground" htmlFor="title">
                   Title
                 </label>
                 <Input id="title" {...form.register("title")} />
                 {form.formState.errors.title ? (
-                  <p className="text-xs text-red-500">
+                  <p className="text-xs text-accent">
                     {form.formState.errors.title.message}
                   </p>
                 ) : null}
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700" htmlFor="description">
+                <label className="text-sm font-medium text-foreground" htmlFor="description">
                   Description
                 </label>
                 <Textarea id="description" {...form.register("description")} />
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700" htmlFor="status">
+                  <label className="text-sm font-medium text-foreground" htmlFor="status">
                     Status
                   </label>
                   <select
                     id="status"
-                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
                     {...form.register("status")}
                   >
                     <option value="OPEN">Open</option>
@@ -250,12 +252,12 @@ export default function IssuesPage() {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700" htmlFor="priority">
+                  <label className="text-sm font-medium text-foreground" htmlFor="priority">
                     Priority
                   </label>
                   <select
                     id="priority"
-                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
                     {...form.register("priority")}
                   >
                     <option value="LOW">Low</option>
@@ -265,18 +267,18 @@ export default function IssuesPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700" htmlFor="labels">
+                <label className="text-sm font-medium text-foreground" htmlFor="labels">
                   Labels (comma separated)
                 </label>
                 <Input id="labels" placeholder="api, ui" {...form.register("labels")} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700" htmlFor="assigneeId">
+                <label className="text-sm font-medium text-foreground" htmlFor="assigneeId">
                   Assignee
                 </label>
                 <select
                   id="assigneeId"
-                  className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                  className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
                   {...form.register("assigneeId")}
                 >
                   <option value="">Unassigned</option>
@@ -297,7 +299,7 @@ export default function IssuesPage() {
               </div>
             </form>
             {!canCreate ? (
-              <p className="mt-3 text-xs text-slate-500">
+              <p className="mt-3 text-xs text-foreground-muted">
                 Only owners, admins, and members can create issues.
               </p>
             ) : null}
@@ -305,23 +307,24 @@ export default function IssuesPage() {
         </Dialog>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="rounded-md border border-border bg-surface p-6">
         <div className="flex flex-wrap items-center gap-3">
-          <select
-            className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-            value={status}
-            onChange={(event) => {
-              setStatus(event.target.value);
+          <Tabs
+            value={status || "all"}
+            onValueChange={(value) => {
+              setStatus(value === "all" ? "" : value);
               setPage(1);
             }}
           >
-            <option value="">All statuses</option>
-            <option value="OPEN">Open</option>
-            <option value="IN_PROGRESS">In progress</option>
-            <option value="DONE">Done</option>
-          </select>
+            <TabsList>
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="OPEN">Open</TabsTrigger>
+              <TabsTrigger value="IN_PROGRESS">In progress</TabsTrigger>
+              <TabsTrigger value="DONE">Done</TabsTrigger>
+            </TabsList>
+          </Tabs>
           <select
-            className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="h-9 rounded-md border border-border bg-surface px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
             value={priority}
             onChange={(event) => {
               setPriority(event.target.value);
@@ -337,15 +340,15 @@ export default function IssuesPage() {
 
         <div className="mt-6 space-y-3">
           {isLoading ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400">Loading issues...</p>
+            <p className="text-sm text-foreground-muted">Loading issues...</p>
           ) : null}
           {!isLoading && issues.length === 0 ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400">No issues found.</p>
+            <p className="text-sm text-foreground-muted">No issues found.</p>
           ) : null}
           {issues.map((issue) => (
             <div
               key={issue._id}
-              className="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-blue-200 hover:bg-blue-50/60 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-blue-500/60 dark:hover:bg-slate-800/60"
+              className="rounded-md border border-border bg-surface p-4 hover:bg-muted"
               role="button"
               tabIndex={0}
               onClick={() => navigate(`/app/issues/${issue._id}`)}
@@ -357,34 +360,22 @@ export default function IssuesPage() {
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase text-slate-400 dark:text-slate-500">
+                  <p className="text-xs font-semibold uppercase text-foreground-muted">
                     {issue.ticketId ?? "NO-ID"}
                   </p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  <p className="mt-1 text-sm font-semibold text-foreground">
                     {issue.title}
                   </p>
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-foreground-muted">
                     <Badge variant="outline">{statusLabels[issue.status]}</Badge>
                     <span
-                      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${priorityStyles[issue.priority]}`}
+                      className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${priorityStyles[issue.priority]}`}
                     >
                       {priorityLabels[issue.priority]}
                     </span>
-                    <span className="text-slate-400 dark:text-slate-600">|</span>
-                    <span className="inline-flex items-center gap-1 text-blue-600 font-medium">
-                      <svg
-                        aria-hidden="true"
-                        className="h-4 w-4"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M20 21a8 8 0 0 0-16 0" />
-                        <circle cx="12" cy="7" r="4" />
-                      </svg>
+                    <span className="text-foreground-muted">|</span>
+                    <span className="inline-flex items-center gap-1 text-accent font-medium">
+                      <User className="h-4 w-4" />
                       {issue.assigneeId?.name ?? "Unassigned"}
                     </span>
                   </div>
@@ -395,7 +386,7 @@ export default function IssuesPage() {
                       {issue.labels.map((label) => (
                         <span
                           key={label}
-                          className="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700"
+                          className="rounded-md border border-border bg-muted px-2 py-0.5 text-xs font-medium text-foreground"
                         >
                           {label}
                         </span>
@@ -421,7 +412,7 @@ export default function IssuesPage() {
           ))}
         </div>
 
-        <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
+        <div className="mt-4 flex items-center justify-between text-sm text-foreground-muted">
           <span>
             Page {page} of {totalPages}
           </span>
@@ -448,3 +439,4 @@ export default function IssuesPage() {
     </div>
   );
 }
+

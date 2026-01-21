@@ -68,60 +68,54 @@ export default function WorkspacesPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold">Workspaces</h1>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+        <p className="mt-2 text-sm text-foreground-muted">
           Join an existing workspace or create a new space for your team.
         </p>
       </div>
 
       {error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900 dark:bg-red-900/30 dark:text-red-200">
+        <div className="rounded-md border border-border bg-muted px-4 py-3 text-sm text-accent">
           {error}
         </div>
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-md border border-border bg-surface p-6">
           <h2 className="text-lg font-semibold">Create workspace</h2>
           <form className="mt-4 space-y-3" onSubmit={createForm.handleSubmit(handleCreate)}>
             <div>
-              <label
-                className="text-sm font-medium text-slate-700 dark:text-slate-200"
-                htmlFor="name"
-              >
+              <label className="text-sm font-medium text-foreground" htmlFor="name">
                 Name
               </label>
               <input
-                className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                className="mt-2 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
                 id="name"
                 type="text"
                 {...createForm.register("name")}
               />
               {createForm.formState.errors.name ? (
-                <p className="mt-1 text-xs text-red-500">
+                <p className="mt-1 text-xs text-accent">
                   {createForm.formState.errors.name.message}
                 </p>
               ) : null}
             </div>
             <div>
-              <label
-                className="text-sm font-medium text-slate-700 dark:text-slate-200"
-                htmlFor="key"
-              >
+              <label className="text-sm font-medium text-foreground" htmlFor="key">
                 Workspace key
               </label>
               <input
-                className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm uppercase dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                className="mt-2 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm uppercase text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
                 id="key"
                 type="text"
                 placeholder="ACME"
                 {...createForm.register("key")}
               />
               {createForm.formState.errors.key ? (
-                <p className="mt-1 text-xs text-red-500">
+                <p className="mt-1 text-xs text-accent">
                   {createForm.formState.errors.key.message}
                 </p>
               ) : (
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                <p className="mt-1 text-xs text-foreground-muted">
                   Used for ticket IDs, like ACME-12.
                 </p>
               )}
@@ -132,24 +126,21 @@ export default function WorkspacesPage() {
           </form>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-md border border-border bg-surface p-6">
           <h2 className="text-lg font-semibold">Join workspace</h2>
           <form className="mt-4 space-y-3" onSubmit={joinForm.handleSubmit(handleJoin)}>
             <div>
-              <label
-                className="text-sm font-medium text-slate-700 dark:text-slate-200"
-                htmlFor="code"
-              >
+              <label className="text-sm font-medium text-foreground" htmlFor="code">
                 Invite code
               </label>
               <input
-                className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                className="mt-2 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
                 id="code"
                 type="text"
                 {...joinForm.register("code")}
               />
               {joinForm.formState.errors.code ? (
-                <p className="mt-1 text-xs text-red-500">
+                <p className="mt-1 text-xs text-accent">
                   {joinForm.formState.errors.code.message}
                 </p>
               ) : null}
@@ -161,23 +152,23 @@ export default function WorkspacesPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="rounded-md border border-border bg-surface p-6">
         <h2 className="text-lg font-semibold">Your workspaces</h2>
-        <div className="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-400">
+        <div className="mt-4 space-y-2 text-sm text-foreground-muted">
           {workspaces.length === 0 ? (
             <p>No workspaces yet.</p>
           ) : (
             workspaces.map((workspace) => (
               <div key={workspace.id} className="flex items-center justify-between">
                 <div>
-                  <span className="font-medium text-slate-900 dark:text-slate-100">
+                  <span className="font-medium text-foreground">
                     {workspace.name}
                   </span>
-                  <span className="ml-2 text-xs text-slate-500 dark:text-slate-400">
+                  <span className="ml-2 text-xs text-foreground-muted">
                     {workspace.key ?? "-"}
                   </span>
                 </div>
-                <span className="text-xs uppercase text-slate-500 dark:text-slate-400">
+                <span className="text-xs uppercase text-foreground-muted">
                   {workspace.role}
                 </span>
               </div>
@@ -188,3 +179,4 @@ export default function WorkspacesPage() {
     </div>
   );
 }
+

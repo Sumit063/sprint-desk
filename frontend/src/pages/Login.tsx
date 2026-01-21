@@ -177,43 +177,40 @@ export default function LoginPage() {
     >
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
         {formError ? (
-          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600 dark:border-red-900 dark:bg-red-900/30 dark:text-red-200">
+          <p className="rounded-md border border-border bg-muted px-3 py-2 text-xs text-accent">
             {formError}
           </p>
         ) : null}
         <div>
-          <label className="text-sm font-medium text-slate-700 dark:text-slate-200" htmlFor="email">
+          <label className="text-sm font-medium text-foreground" htmlFor="email">
             Email
           </label>
           <input
-            className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="mt-2 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
             id="email"
             type="email"
             {...register("email")}
           />
           {errors.email ? (
-            <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>
+            <p className="mt-1 text-xs text-accent">{errors.email.message}</p>
           ) : null}
         </div>
         <div>
-          <label
-            className="text-sm font-medium text-slate-700 dark:text-slate-200"
-            htmlFor="password"
-          >
+          <label className="text-sm font-medium text-foreground" htmlFor="password">
             Password
           </label>
           <input
-            className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="mt-2 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
             id="password"
             type="password"
             {...register("password")}
           />
           {errors.password ? (
-            <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>
+            <p className="mt-1 text-xs text-accent">{errors.password.message}</p>
           ) : null}
         </div>
         <button
-          className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+          className="w-full rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover"
           type="submit"
           disabled={isSubmitting}
         >
@@ -222,23 +219,23 @@ export default function LoginPage() {
       </form>
       {googleClientId ? (
         <>
-          <div className="my-6 flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-            <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+          <div className="my-6 flex items-center gap-3 text-xs text-foreground-muted">
+            <span className="h-px flex-1 bg-border" />
             <span>or</span>
-            <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+            <span className="h-px flex-1 bg-border" />
           </div>
           <div className="flex justify-center">
             <div ref={googleButtonRef} className="w-full max-w-xs" />
           </div>
         </>
       ) : null}
-      <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50/70 p-4 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-200">
+      <div className="mt-6 rounded-md border border-border bg-muted p-4 text-sm text-foreground">
         <div className="flex items-center justify-between">
           <p className="font-medium">Email OTP</p>
           {otpStep === "verify" ? (
             <button
               type="button"
-              className="text-xs font-medium text-blue-600 hover:text-blue-700"
+              className="text-xs font-medium text-accent hover:text-accent-hover"
               onClick={() => {
                 setOtpStep("request");
                 setOtpCode("");
@@ -248,7 +245,7 @@ export default function LoginPage() {
             </button>
           ) : null}
         </div>
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+        <p className="mt-1 text-xs text-foreground-muted">
           {otpStep === "verify"
             ? `Code sent to ${otpEmail}`
             : "We will email a 6-digit code for a quick sign-in."}
@@ -258,11 +255,11 @@ export default function LoginPage() {
           onSubmit={otpStep === "verify" ? handleOtpVerify : handleOtpRequest}
         >
           <div>
-            <label className="text-xs font-medium text-slate-600 dark:text-slate-300" htmlFor="otp-email">
+            <label className="text-xs font-medium text-foreground-muted" htmlFor="otp-email">
               Email
             </label>
             <input
-              className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              className="mt-2 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
               id="otp-email"
               type="email"
               value={otpEmail}
@@ -272,11 +269,11 @@ export default function LoginPage() {
           </div>
           {otpStep === "verify" ? (
             <div>
-              <label className="text-xs font-medium text-slate-600 dark:text-slate-300" htmlFor="otp-code">
+              <label className="text-xs font-medium text-foreground-muted" htmlFor="otp-code">
                 Code
               </label>
               <input
-                className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm tracking-[0.4em] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                className="mt-2 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm tracking-[0.4em] text-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
                 id="otp-code"
                 type="text"
                 inputMode="numeric"
@@ -288,7 +285,7 @@ export default function LoginPage() {
             </div>
           ) : null}
           <button
-            className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+            className="w-full rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground hover:bg-background"
             type="submit"
             disabled={otpBusy}
           >
@@ -298,7 +295,7 @@ export default function LoginPage() {
       </div>
       <div className="mt-4 grid gap-2">
         <button
-          className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+          className="w-full rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground hover:bg-background"
           type="button"
           disabled={demoBusy !== null}
           onClick={() => handleDemoLogin("owner")}
@@ -306,7 +303,7 @@ export default function LoginPage() {
           {demoBusy === "owner" ? "Signing in..." : "Continue as Demo Owner"}
         </button>
         <button
-          className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+          className="w-full rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground hover:bg-background"
           type="button"
           disabled={demoBusy !== null}
           onClick={() => handleDemoLogin("member")}
@@ -317,3 +314,4 @@ export default function LoginPage() {
     </AuthShell>
   );
 }
+

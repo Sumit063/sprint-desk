@@ -46,57 +46,54 @@ export default function RegisterPage() {
     >
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
         {formError ? (
-          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600 dark:border-red-900 dark:bg-red-900/30 dark:text-red-200">
+          <p className="rounded-md border border-border bg-muted px-3 py-2 text-xs text-accent">
             {formError}
           </p>
         ) : null}
         <div>
-          <label className="text-sm font-medium text-slate-700 dark:text-slate-200" htmlFor="name">
+          <label className="text-sm font-medium text-foreground" htmlFor="name">
             Name
           </label>
           <input
-            className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="mt-2 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
             id="name"
             type="text"
             {...register("name")}
           />
           {errors.name ? (
-            <p className="mt-1 text-xs text-red-500">{errors.name.message}</p>
+            <p className="mt-1 text-xs text-accent">{errors.name.message}</p>
           ) : null}
         </div>
         <div>
-          <label className="text-sm font-medium text-slate-700 dark:text-slate-200" htmlFor="email">
+          <label className="text-sm font-medium text-foreground" htmlFor="email">
             Email
           </label>
           <input
-            className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="mt-2 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
             id="email"
             type="email"
             {...register("email")}
           />
           {errors.email ? (
-            <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>
+            <p className="mt-1 text-xs text-accent">{errors.email.message}</p>
           ) : null}
         </div>
         <div>
-          <label
-            className="text-sm font-medium text-slate-700 dark:text-slate-200"
-            htmlFor="password"
-          >
+          <label className="text-sm font-medium text-foreground" htmlFor="password">
             Password
           </label>
           <input
-            className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="mt-2 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
             id="password"
             type="password"
             {...register("password")}
           />
           {errors.password ? (
-            <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>
+            <p className="mt-1 text-xs text-accent">{errors.password.message}</p>
           ) : null}
         </div>
         <button
-          className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+          className="w-full rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover"
           type="submit"
           disabled={isSubmitting}
         >
@@ -106,3 +103,4 @@ export default function RegisterPage() {
     </AuthShell>
   );
 }
+

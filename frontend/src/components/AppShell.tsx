@@ -1,26 +1,55 @@
-import { useEffect, useState } from "react";
-import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import {
+  Bell,
+  BookOpen,
+  ChevronDown,
+  ChevronRight,
+  ListChecks,
+  LogOut,
+  Moon,
+  Settings,
+  Sun
+} from "lucide-react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
 import WorkspaceSwitcher from "@/components/WorkspaceSwitcher";
 import { useWorkspaceSocket } from "@/hooks/useWorkspaceSocket";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Notification = {
   _id: string;
 };
 
 const navItems = [
-  { label: "Issues", to: "/app/issues" },
-  { label: "Knowledge Base", to: "/app/kb" },
-  { label: "Notifications", to: "/app/notifications" },
-  { label: "Settings", to: "/app/settings" }
+  { label: "Issues", to: "/app/issues", icon: ListChecks },
+  { label: "Knowledge Base", to: "/app/kb", icon: BookOpen },
+  { label: "Notifications", to: "/app/notifications", icon: Bell },
+  { label: "Settings", to: "/app/settings", icon: Settings }
 ];
+
+const breadcrumbMap: Record<string, string> = {
+  issues: "Issues",
+  kb: "Knowledge Base",
+  notifications: "Notifications",
+  settings: "Settings",
+  workspaces: "Workspaces"
+};
 
 export default function AppShell() {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
+  const location = useLocation();
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     if (typeof window === "undefined") return "light";
     const stored = window.localStorage.getItem("theme");
@@ -57,128 +86,140 @@ export default function AppShell() {
     setTheme((current) => (current === "dark" ? "light" : "dark"));
   };
 
-  return (
-    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-blue-50 via-white to-emerald-50 text-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900 dark:text-slate-100">
-      <aside className="flex h-full w-64 flex-col overflow-hidden border-r border-slate-200 bg-white/90 p-6 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90">
-        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">
-          SprintDesk
-        </div>
-        <div className="mt-6">
-          <WorkspaceSwitcher />
-          <Link
-            className="mt-2 inline-block text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-            to="/app/workspaces"
-          >
-            Manage workspaces
-          </Link>
-        </div>
-        <nav className="mt-8 flex-1 space-y-2">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `block rounded-lg px-3 py-2 text-sm font-medium ${
-                  isActive
-                    ? "bg-blue-600 text-white dark:bg-blue-500"
-                    : "text-slate-600 hover:bg-blue-50 dark:text-slate-300 dark:hover:bg-slate-800"
-                }`
-              }
-            >
-              <span className="flex items-center justify-between">
-                <span>{item.label}</span>
-                {item.to === "/app/notifications" && unreadCount > 0 ? (
-                  <span className="ml-2 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-xs font-semibold text-white">
-                    {unreadCount}
-                  </span>
-                ) : null}
-              </span>
-            </NavLink>
-          ))}
-        </nav>
-        <button
-          className="mt-4 rounded-lg border border-slate-200 px-3 py-2 text-sm hover:border-blue-200 hover:text-blue-700 dark:border-slate-700 dark:text-slate-200 dark:hover:border-blue-500 dark:hover:text-blue-300"
-          type="button"
-          onClick={handleLogout}
-        >
-          Sign out
-        </button>
-      </aside>
+  const breadcrumbs = useMemo(() => {
+    const segments = location.pathname.split("/").filter(Boolean);
+    const appIndex = segments.indexOf("app");
+    const items = appIndex >= 0 ? segments.slice(appIndex + 1) : [];
+    return items.map((segment, index) => {
+      if (segment === "issues" && items[index + 1]) {
+        return "Issue";
+      }
+      return breadcrumbMap[segment] ?? segment;
+    });
+  }, [location.pathname]);
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-end gap-2 border-b border-slate-200 bg-white/80 px-6 py-4 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
-          <button
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:bg-blue-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-            type="button"
-            onClick={toggleTheme}
-            aria-label="Toggle theme"
-          >
-            {theme === "dark" ? (
-              <svg
-                aria-hidden="true"
-                className="h-4 w-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+  return (
+    <TooltipProvider>
+      <div className="flex min-h-screen bg-background text-foreground">
+        <aside className="flex h-screen w-60 flex-col border-r border-border bg-surface">
+          <div className="px-5 py-4">
+            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground">
+              SprintDesk
+            </div>
+            <div className="mt-6 space-y-2">
+              <WorkspaceSwitcher />
+              <Link
+                className="inline-flex text-xs font-medium text-foreground-muted hover:text-foreground"
+                to="/app/workspaces"
               >
-                <circle cx="12" cy="12" r="4" />
-                <path d="M12 2v2" />
-                <path d="M12 20v2" />
-                <path d="M4.93 4.93l1.41 1.41" />
-                <path d="M17.66 17.66l1.41 1.41" />
-                <path d="M2 12h2" />
-                <path d="M20 12h2" />
-                <path d="M6.34 17.66l-1.41 1.41" />
-                <path d="M19.07 4.93l-1.41 1.41" />
-              </svg>
-            ) : (
-              <svg
-                aria-hidden="true"
-                className="h-4 w-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79Z" />
-              </svg>
-            )}
-          </button>
-          <div className="flex items-center gap-2 bg-white px-2 py-0.5 dark:bg-transparent">
-            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white">
-              <svg
-                aria-hidden="true"
-                className="h-4 w-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M20 21a8 8 0 0 0-16 0" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-            </span>
-            <div className="leading-tight">
-              <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">
-                {user?.name ?? "User"}
-              </p>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                {user?.email}
-              </p>
+                Manage workspaces
+              </Link>
             </div>
           </div>
-        </header>
-        <main className="flex-1 overflow-y-auto p-6">
-          <Outlet />
-        </main>
+          <nav className="flex-1 space-y-1 px-3">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    [
+                      "relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium",
+                      "text-foreground-muted hover:bg-muted hover:text-foreground",
+                      isActive
+                        ? "bg-muted text-foreground before:absolute before:left-0 before:top-1/2 before:h-5 before:w-0.5 before:-translate-y-1/2 before:bg-accent"
+                        : ""
+                    ].join(" ")
+                  }
+                >
+                  <Icon className="h-4 w-4" aria-hidden="true" />
+                  <span className="flex flex-1 items-center justify-between">
+                    <span>{item.label}</span>
+                    {item.to === "/app/notifications" && unreadCount > 0 ? (
+                      <span className="ml-2 inline-flex h-5 min-w-[20px] items-center justify-center rounded-md bg-accent px-1 text-[11px] font-semibold text-white">
+                        {unreadCount}
+                      </span>
+                    ) : null}
+                  </span>
+                </NavLink>
+              );
+            })}
+          </nav>
+          <div className="px-4 pb-4">
+            <button
+              className="w-full rounded-md border border-border px-3 py-2 text-sm text-foreground-muted hover:bg-muted hover:text-foreground"
+              type="button"
+              onClick={handleLogout}
+            >
+              Sign out
+            </button>
+          </div>
+        </aside>
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="flex items-center justify-between border-b border-border bg-surface px-6 py-3">
+            <div className="flex items-center gap-2 text-xs text-foreground-muted">
+              <span>App</span>
+              {breadcrumbs.map((crumb, index) => (
+                <span key={`${crumb}-${index}`} className="flex items-center gap-2">
+                  <ChevronRight className="h-3 w-3" />
+                  <span className="text-foreground">{crumb}</span>
+                </span>
+              ))}
+            </div>
+            <div className="flex items-center gap-3">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-foreground-muted hover:bg-muted hover:text-foreground"
+                    type="button"
+                    onClick={toggleTheme}
+                    aria-label="Toggle theme"
+                  >
+                    {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{theme === "dark" ? "Light mode" : "Dark mode"}</TooltipContent>
+              </Tooltip>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="inline-flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground hover:bg-muted"
+                    type="button"
+                  >
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-muted text-xs font-semibold text-foreground">
+                      {user?.name?.slice(0, 1).toUpperCase() ?? "U"}
+                    </span>
+                    <span className="hidden text-left text-xs font-medium sm:block">
+                      {user?.name ?? "User"}
+                    </span>
+                    <ChevronDown className="h-4 w-4 text-foreground-muted" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>{user?.email ?? "Signed in"}</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate("/app/settings")}>
+                    <Settings className="h-4 w-4" />
+                    Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="h-4 w-4" />
+                    Sign out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </header>
+          <main className="flex-1 overflow-y-auto px-6 py-6">
+            <div className="mx-auto w-full max-w-6xl">
+              <Outlet />
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }
+

@@ -6,6 +6,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
 import { z } from "zod";
+import { X } from "lucide-react";
 import api from "@/lib/api";
 import { useWorkspaceStore } from "@/stores/workspaces";
 import { Button } from "@/components/ui/button";
@@ -173,9 +174,9 @@ export default function KnowledgeBasePage() {
 
   if (!currentWorkspaceId) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="rounded-md border border-border bg-surface p-6">
         <h2 className="text-lg font-semibold">Select a workspace</h2>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+        <p className="mt-2 text-sm text-foreground-muted">
           Choose a workspace to manage knowledge base articles.
         </p>
       </div>
@@ -276,7 +277,7 @@ export default function KnowledgeBasePage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Knowledge Base</h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+          <p className="mt-1 text-sm text-foreground-muted">
             Capture decisions, how-tos, and troubleshooting notes for your team.
           </p>
         </div>
@@ -284,14 +285,14 @@ export default function KnowledgeBasePage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-        <aside className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Articles</h2>
+        <aside className="rounded-md border border-border bg-surface p-4">
+          <h2 className="text-sm font-semibold text-foreground">Articles</h2>
           <div className="mt-3 space-y-2">
             {isLoading ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">Loading...</p>
+              <p className="text-sm text-foreground-muted">Loading...</p>
             ) : null}
             {!isLoading && articles.length === 0 ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">No articles yet.</p>
+              <p className="text-sm text-foreground-muted">No articles yet.</p>
             ) : null}
             {articles.map((article) => (
               <button
@@ -305,10 +306,10 @@ export default function KnowledgeBasePage() {
                     return next;
                   });
                 }}
-                className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition ${
+                className={`w-full rounded-md border px-3 py-2 text-left text-sm ${
                   selectedArticleId === article._id
-                    ? "border-slate-900 bg-slate-900 text-white dark:border-blue-500 dark:bg-blue-600"
-                    : "border-slate-200 text-slate-700 hover:bg-blue-50/60 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-800"
+                    ? "border-accent bg-accent text-white"
+                    : "border-border text-foreground hover:bg-muted"
                 }`}
               >
                 <p className="font-medium">{article.title}</p>
@@ -321,13 +322,13 @@ export default function KnowledgeBasePage() {
         </aside>
 
         <section className="space-y-6">
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="rounded-md border border-border bg-surface p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold">
                   {selectedArticle ? "Edit article" : "Create article"}
                 </h2>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                <p className="mt-1 text-sm text-foreground-muted">
                   Use markdown to structure the content.
                 </p>
               </div>
@@ -351,34 +352,32 @@ export default function KnowledgeBasePage() {
 
             <form className="mt-6 space-y-4" onSubmit={form.handleSubmit(handleSubmit)}>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700" htmlFor="title">
+                <label className="text-sm font-medium text-foreground" htmlFor="title">
                   Title
                 </label>
                 <Input id="title" {...form.register("title")} />
                 {form.formState.errors.title ? (
-                  <p className="text-xs text-red-500">{form.formState.errors.title.message}</p>
+                  <p className="text-xs text-accent">{form.formState.errors.title.message}</p>
                 ) : null}
               </div>
 
               {activeTab === "edit" ? (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700" htmlFor="body">
+                  <label className="text-sm font-medium text-foreground" htmlFor="body">
                     Markdown
                   </label>
                   <Textarea id="body" rows={12} {...form.register("body")} />
                 </div>
               ) : (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
+                <div className="rounded-md border border-border bg-muted p-4 text-sm text-foreground">
                   {form.watch("body") ? (
-                    <div className="prose prose-slate max-w-none dark:prose-invert">
+                    <div className="prose max-w-none text-foreground dark:prose-invert">
                       <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
                         {form.watch("body")}
                       </ReactMarkdown>
                     </div>
                   ) : (
-                    <p className="text-slate-500 dark:text-slate-400">
-                      Nothing to preview yet.
-                    </p>
+                    <p className="text-foreground-muted">Nothing to preview yet.</p>
                   )}
                 </div>
               )}
@@ -403,9 +402,9 @@ export default function KnowledgeBasePage() {
             </form>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="rounded-md border border-border bg-surface p-6">
             <h2 className="text-lg font-semibold">Link issues</h2>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-sm text-foreground-muted">
               Attach related work items to keep context in one place.
             </p>
             <div className="mt-4 space-y-3">
@@ -417,12 +416,12 @@ export default function KnowledgeBasePage() {
                     onChange={(event) => setLinkInput(event.target.value)}
                   />
                   {issueSuggestions.length > 0 ? (
-                    <div className="absolute z-10 mt-2 w-full rounded-lg border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-800 dark:bg-slate-900">
+                    <div className="absolute z-10 mt-2 w-full rounded-md border border-border bg-surface p-2">
                       {issueSuggestions.map((issue) => (
                         <button
                           key={issue._id}
                           type="button"
-                          className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                          className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted"
                           onMouseDown={(event) => {
                             event.preventDefault();
                             handleLinkSelect(issue);
@@ -445,35 +444,23 @@ export default function KnowledgeBasePage() {
               </div>
               <div className="flex flex-wrap gap-2">
                 {linkedIssues.length === 0 ? (
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                  <p className="text-sm text-foreground-muted">
                     No linked issues yet.
                   </p>
                 ) : (
                   linkedIssues.map((issue) => (
                     <span
                       key={issue._id}
-                      className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700"
+                      className="inline-flex items-center gap-2 rounded-md border border-border bg-muted px-3 py-1 text-xs font-medium text-foreground"
                     >
                       {issue.ticketId ?? "NO-ID"} - {issue.title}
                       <button
                         type="button"
                         onClick={() => handleRemoveLinked(issue._id)}
-                        className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200"
+                        className="inline-flex h-4 w-4 items-center justify-center rounded-md bg-muted text-accent hover:bg-background"
                         aria-label="Remove linked issue"
                       >
-                        <svg
-                          aria-hidden="true"
-                          className="h-3 w-3"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <line x1="18" y1="6" x2="6" y2="18" />
-                          <line x1="6" y1="6" x2="18" y2="18" />
-                        </svg>
+                        <X className="h-3 w-3" />
                       </button>
                     </span>
                   ))
@@ -486,3 +473,5 @@ export default function KnowledgeBasePage() {
     </div>
   );
 }
+
+

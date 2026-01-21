@@ -12,7 +12,7 @@ export function DialogOverlay({ className, ...props }: DialogPrimitive.DialogOve
   return (
       <DialogPrimitive.Overlay
         className={cn(
-        "fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out dark:bg-slate-950/60",
+        "fixed inset-0 z-50 bg-black/40",
         className
       )}
       {...props}
@@ -26,7 +26,7 @@ export function DialogContent({ className, ...props }: DialogPrimitive.DialogCon
       <DialogOverlay />
       <DialogPrimitive.Content
         className={cn(
-          "fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100",
+          "fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-md border border-border bg-surface p-6 text-foreground",
           className
         )}
         {...props}
@@ -53,8 +53,9 @@ export function DialogTitle({ className, ...props }: DialogPrimitive.DialogTitle
 export function DialogDescription({ className, ...props }: DialogPrimitive.DialogDescriptionProps) {
   return (
     <DialogPrimitive.Description
-      className={cn("text-sm text-slate-600 dark:text-slate-400", className)}
+      className={cn("text-sm text-foreground-muted", className)}
       {...props}
     />
   );
 }
+
