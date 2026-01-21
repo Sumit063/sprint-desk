@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import express from "express";
 import { createServer } from "http";
 import mongoose from "mongoose";
+import { demoSeedOnStart } from "./config";
 import authRoutes from "./routes/auth";
 import usersRoutes from "./routes/users";
 import workspacesRoutes from "./routes/workspaces";
@@ -11,6 +12,7 @@ import issuesRoutes from "./routes/issues";
 import commentsRoutes from "./routes/comments";
 import notificationsRoutes from "./routes/notifications";
 import articlesRoutes from "./routes/articles";
+import { seedDemoData } from "./seed/demoSeed";
 import { initSocket } from "./socket";
 
 dotenv.config();
@@ -47,6 +49,14 @@ const start = async () => {
     await mongoose.connect(mongoUrl);
   } else {
     console.warn("MONGO_URL not set, skipping MongoDB connection");
+  }
+
+  if (mongoUrl && demoSeedOnStart) {
+    try {
+      await seedDemoData();
+    } catch (error) {
+      console.error("Demo seed failed", error);
+    }
   }
 
   const server = createServer(app);

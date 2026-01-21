@@ -13,6 +13,12 @@ export const smtpPort = Number(process.env.SMTP_PORT ?? 0);
 export const smtpUser = process.env.SMTP_USER ?? "";
 export const smtpPass = process.env.SMTP_PASS ?? "";
 export const smtpFrom = process.env.SMTP_FROM ?? "";
+export const demoMode = process.env.DEMO_MODE
+  ? process.env.DEMO_MODE === "true"
+  : !isProd;
+export const demoSeedOnStart = process.env.DEMO_SEED_ON_START
+  ? process.env.DEMO_SEED_ON_START === "true"
+  : !isProd;
 
 export const refreshCookieOptions = {
   httpOnly: true,

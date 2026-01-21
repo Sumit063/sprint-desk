@@ -45,6 +45,10 @@ Google login requires:
 Email OTP login requires SMTP settings in `backend/.env`:
 `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`.
 
+Demo mode:
+- `DEMO_MODE=true` enables `/api/auth/demo` for demo logins.
+- `DEMO_SEED_ON_START=true` seeds demo users/workspace on startup.
+
 ## shadcn/ui Setup
 
 The frontend is pre-configured for shadcn/ui. To add components, run:

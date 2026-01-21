@@ -17,6 +17,7 @@ type AuthState = {
   loginWithGoogle: (credential: string) => Promise<void>;
   requestOtp: (email: string) => Promise<void>;
   verifyOtp: (payload: { email: string; code: string }) => Promise<void>;
+  loginAsDemo: (type: "owner" | "member") => Promise<void>;
   register: (payload: { name: string; email: string; password: string }) => Promise<void>;
   logout: () => Promise<void>;
 };
@@ -54,6 +55,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
   verifyOtp: async (payload) => {
     const res = await api.post("/api/auth/otp/verify", payload);
+    const token = res.data.accessToken ?? null;
+    setAccessToken(token);
+    set({ accessToken: token, user: res.data.user ?? null });
+  },
+  loginAsDemo: async (type) => {
+    const res = await api.post("/api/auth/demo", { type });
     const token = res.data.accessToken ?? null;
     setAccessToken(token);
     set({ accessToken: token, user: res.data.user ?? null });
