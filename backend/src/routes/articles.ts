@@ -19,7 +19,12 @@ router.use(requireAuth);
 router.use(requireWorkspaceMember);
 
 router.get("/", async (req, res) => {
-  const articles = await ArticleModel.find({ workspaceId: req.workspaceId })
+  const filter: Record<string, unknown> = { workspaceId: req.workspaceId };
+  if (req.query.issueId) {
+    filter.linkedIssueIds = req.query.issueId;
+  }
+
+  const articles = await ArticleModel.find(filter)
     .sort({ createdAt: -1 })
     .populate("createdBy", "name email");
 

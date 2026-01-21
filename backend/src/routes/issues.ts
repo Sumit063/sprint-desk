@@ -124,7 +124,8 @@ router.post(
 
     emitWorkspaceEvent(req.workspaceId, "issue_created", {
       issueId: issue._id.toString(),
-      title: issue.title
+      title: issue.title,
+      actorId: req.userId
     });
 
     if (issue.assigneeId && issue.assigneeId.toString() !== req.userId) {
@@ -201,7 +202,8 @@ router.patch(
 
       emitWorkspaceEvent(req.workspaceId, "issue_updated", {
         issueId: issue._id.toString(),
-        fields
+        fields,
+        actorId: req.userId
       });
     }
 

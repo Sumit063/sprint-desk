@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import api from "@/lib/api";
 import { useWorkspaceStore } from "@/stores/workspaces";
+import { useAuthStore } from "@/stores/auth";
 import {
   Dialog,
   DialogContent,
@@ -76,9 +77,11 @@ export default function IssuesPage() {
   const currentWorkspaceId = useWorkspaceStore((state) => state.currentWorkspaceId);
   const workspaces = useWorkspaceStore((state) => state.workspaces);
   const currentWorkspace = workspaces.find((item) => item.id === currentWorkspaceId);
+  const user = useAuthStore((state) => state.user);
   const [status, setStatus] = useState<string>("");
   const [priority, setPriority] = useState<string>("");
   const [page, setPage] = useState(1);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const canCreate =
@@ -141,6 +144,20 @@ export default function IssuesPage() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["issues", currentWorkspaceId] });
+      setIsCreateOpen(false);
+    }
+  });
+
+  const assignMutation = useMutation({
+    mutationFn: async (issueId: string) => {
+      if (!currentWorkspaceId || !user?.id) return;
+      await api.patch(`/api/workspaces/${currentWorkspaceId}/issues/${issueId}`, {
+        assigneeId: user.id
+      });
+    },
+    onSuccess: async (_, issueId) => {
+      await queryClient.invalidateQueries({ queryKey: ["issues", currentWorkspaceId] });
+      await queryClient.invalidateQueries({ queryKey: ["issue", issueId] });
     }
   });
 
@@ -166,9 +183,9 @@ export default function IssuesPage() {
 
   if (!currentWorkspaceId) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <h2 className="text-lg font-semibold">Select a workspace</h2>
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
           Choose a workspace from the sidebar to start tracking issues.
         </p>
       </div>
@@ -184,11 +201,11 @@ export default function IssuesPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Issues</h1>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
             Track work, assign owners, and keep progress visible.
           </p>
         </div>
-        <Dialog>
+        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
             <Button disabled={!canCreate}>Create Issue</Button>
           </DialogTrigger>
@@ -224,7 +241,7 @@ export default function IssuesPage() {
                   </label>
                   <select
                     id="status"
-                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                     {...form.register("status")}
                   >
                     <option value="OPEN">Open</option>
@@ -238,7 +255,7 @@ export default function IssuesPage() {
                   </label>
                   <select
                     id="priority"
-                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                     {...form.register("priority")}
                   >
                     <option value="LOW">Low</option>
@@ -259,7 +276,7 @@ export default function IssuesPage() {
                 </label>
                 <select
                   id="assigneeId"
-                  className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+                  className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                   {...form.register("assigneeId")}
                 >
                   <option value="">Unassigned</option>
@@ -288,10 +305,10 @@ export default function IssuesPage() {
         </Dialog>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-wrap items-center gap-3">
           <select
-            className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm"
+            className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             value={status}
             onChange={(event) => {
               setStatus(event.target.value);
@@ -304,7 +321,7 @@ export default function IssuesPage() {
             <option value="DONE">Done</option>
           </select>
           <select
-            className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm"
+            className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             value={priority}
             onChange={(event) => {
               setPriority(event.target.value);
@@ -319,14 +336,16 @@ export default function IssuesPage() {
         </div>
 
         <div className="mt-6 space-y-3">
-          {isLoading ? <p className="text-sm text-slate-500">Loading issues...</p> : null}
+          {isLoading ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">Loading issues...</p>
+          ) : null}
           {!isLoading && issues.length === 0 ? (
-            <p className="text-sm text-slate-500">No issues found.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">No issues found.</p>
           ) : null}
           {issues.map((issue) => (
             <div
               key={issue._id}
-              className="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:bg-slate-50"
+              className="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-blue-200 hover:bg-blue-50/60 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-blue-500/60 dark:hover:bg-slate-800/60"
               role="button"
               tabIndex={0}
               onClick={() => navigate(`/app/issues/${issue._id}`)}
@@ -338,37 +357,65 @@ export default function IssuesPage() {
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase text-slate-400">
+                  <p className="text-xs font-semibold uppercase text-slate-400 dark:text-slate-500">
                     {issue.ticketId ?? "NO-ID"}
                   </p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">
+                  <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
                     {issue.title}
                   </p>
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                     <Badge variant="outline">{statusLabels[issue.status]}</Badge>
                     <span
                       className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${priorityStyles[issue.priority]}`}
                     >
                       {priorityLabels[issue.priority]}
                     </span>
-                    <span className="text-slate-400">•</span>
-                    <span className="text-blue-600 font-medium">
+                    <span className="text-slate-400 dark:text-slate-600">|</span>
+                    <span className="inline-flex items-center gap-1 text-blue-600 font-medium">
+                      <svg
+                        aria-hidden="true"
+                        className="h-4 w-4"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M20 21a8 8 0 0 0-16 0" />
+                        <circle cx="12" cy="7" r="4" />
+                      </svg>
                       {issue.assigneeId?.name ?? "Unassigned"}
                     </span>
                   </div>
                 </div>
-                {issue.labels?.length ? (
-                  <div className="flex flex-wrap gap-1">
-                    {issue.labels.map((label) => (
-                      <span
-                        key={label}
-                        className="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700"
-                      >
-                        {label}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
+                <div className="flex flex-wrap items-center gap-2">
+                  {issue.labels?.length ? (
+                    <div className="flex flex-wrap gap-1">
+                      {issue.labels.map((label) => (
+                        <span
+                          key={label}
+                          className="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700"
+                        >
+                          {label}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                  {canCreate && user && issue.assigneeId?._id !== user.id ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        assignMutation.mutate(issue._id);
+                      }}
+                      disabled={assignMutation.isPending}
+                    >
+                      Assign to me
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             </div>
           ))}

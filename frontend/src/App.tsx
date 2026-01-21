@@ -28,9 +28,21 @@ export default function App() {
     bootstrap();
   }, [bootstrap]);
 
+  useEffect(() => {
+    const stored = window.localStorage.getItem("theme");
+    if (stored === "light" || stored === "dark") {
+      document.documentElement.classList.toggle("dark", stored === "dark");
+      return;
+    }
+    document.documentElement.classList.toggle(
+      "dark",
+      window.matchMedia("(prefers-color-scheme: dark)").matches
+    );
+  }, []);
+
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-600">
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-600 dark:bg-slate-950 dark:text-slate-300">
         Loading session...
       </div>
     );
@@ -38,7 +50,12 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <Toaster richColors position="top-right" />
+      <Toaster
+        richColors
+        position="top-right"
+        closeButton
+        toastOptions={{ className: "rounded-md" }}
+      />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />

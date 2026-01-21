@@ -68,9 +68,9 @@ export default function SettingsPage() {
 
   if (!currentWorkspaceId) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <h2 className="text-lg font-semibold">Select a workspace</h2>
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
           Choose a workspace to manage members and invites.
         </p>
       </div>
@@ -81,22 +81,22 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Workspace settings</h1>
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
           Manage members and invite new teammates to {currentWorkspace?.name}.
         </p>
       </div>
 
       {error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900 dark:bg-red-900/30 dark:text-red-200">
           {error}
         </div>
       ) : null}
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold">Invite link</h2>
-            <p className="mt-1 text-sm text-slate-600">
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
               Share this code with teammates to join the workspace.
             </p>
           </div>
@@ -110,45 +110,55 @@ export default function SettingsPage() {
           </button>
         </div>
         {!canInvite ? (
-          <p className="mt-2 text-xs text-slate-500">
+          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
             Only owners or admins can generate invites.
           </p>
         ) : null}
         {inviteCode ? (
-          <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
-            <p className="font-medium text-slate-700">Code: {inviteCode}</p>
+          <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm dark:border-slate-800 dark:bg-slate-950">
+            <p className="font-medium text-slate-700 dark:text-slate-100">
+              Code: {inviteCode}
+            </p>
             {inviteLink ? (
-              <p className="mt-1 text-xs text-slate-500">{inviteLink}</p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                {inviteLink}
+              </p>
             ) : null}
           </div>
         ) : null}
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <h2 className="text-lg font-semibold">Members</h2>
         {!canManageMembers ? (
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
             Only owners can change member roles.
           </p>
         ) : null}
         <div className="mt-4 space-y-3">
-          {isLoading ? <p className="text-sm text-slate-500">Loading...</p> : null}
+          {isLoading ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">Loading...</p>
+          ) : null}
           {members.length === 0 && !isLoading ? (
-            <p className="text-sm text-slate-500">No members found.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              No members found.
+            </p>
           ) : null}
           {members.map((member) => (
             <div
               key={member.id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-800"
             >
               <div>
-                <p className="text-sm font-medium text-slate-900">
+                <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
                   {member.user.name}
                 </p>
-                <p className="text-xs text-slate-500">{member.user.email}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {member.user.email}
+                </p>
               </div>
               <select
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 value={member.role}
                 onChange={(event) =>
                   handleRoleChange(member.id, event.target.value as Member["role"])

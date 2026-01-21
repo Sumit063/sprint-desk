@@ -77,7 +77,8 @@ router.post("/", validateBody(createCommentSchema), async (req, res) => {
 
   emitWorkspaceEvent(issue.workspaceId.toString(), "comment_added", {
     issueId: issue._id.toString(),
-    commentId: comment._id.toString()
+    commentId: comment._id.toString(),
+    actorId: req.userId
   });
 
   const mentionRegex = /@([\w.+-]+@[\w.-]+\.[A-Za-z]{2,})/g;

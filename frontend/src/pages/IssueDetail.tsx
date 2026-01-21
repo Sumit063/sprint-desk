@@ -1,13 +1,21 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useParams } from "react-router-dom";
 import { z } from "zod";
 import api from "@/lib/api";
+import { useAuthStore } from "@/stores/auth";
 import { useWorkspaceStore } from "@/stores/workspaces";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -20,7 +28,9 @@ const editSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
   labels: z.string().optional(),
-  assigneeId: z.string().optional()
+  assigneeId: z.string().optional(),
+  status: z.enum(["OPEN", "IN_PROGRESS", "DONE"]),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH"])
 });
 
 type CommentForm = z.infer<typeof commentSchema>;
@@ -38,6 +48,7 @@ type IssueDetail = {
   assigneeId?: { _id: string; name: string; email: string } | null;
   createdBy?: { name: string; email: string } | null;
   createdAt?: string;
+  updatedAt?: string;
 };
 
 type Comment = {
@@ -51,6 +62,11 @@ type Member = {
   id: string;
   role: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
   user: { id: string; name: string; email: string };
+};
+
+type Article = {
+  _id: string;
+  title: string;
 };
 
 const statusLabels: Record<IssueDetail["status"], string> = {
@@ -73,13 +89,14 @@ const priorityStyles: Record<IssueDetail["priority"], string> = {
 
 const mentionRegex = /@([\w.+-]+@[\w.-]+\.[A-Za-z]{2,})/g;
 
-const renderCommentBody = (body: string) => {
+const renderCommentBody = (body: string, mentionMap: Map<string, string>) => {
   const parts = body.split(mentionRegex);
   return parts.map((part, index) => {
     if (index % 2 === 1) {
+      const lookup = mentionMap.get(part.toLowerCase()) ?? part;
       return (
         <span key={`mention-${index}`} className="font-medium text-blue-600">
-          @{part}
+          @{lookup}
         </span>
       );
     }
@@ -92,12 +109,23 @@ export default function IssueDetailPage() {
   const currentWorkspaceId = useWorkspaceStore((state) => state.currentWorkspaceId);
   const workspaces = useWorkspaceStore((state) => state.workspaces);
   const currentWorkspace = workspaces.find((item) => item.id === currentWorkspaceId);
+  const user = useAuthStore((state) => state.user);
   const queryClient = useQueryClient();
 
   const canEdit =
     currentWorkspace?.role === "OWNER" ||
     currentWorkspace?.role === "ADMIN" ||
     currentWorkspace?.role === "MEMBER";
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [mentionIndex, setMentionIndex] = useState<number | null>(null);
+  const [mentionCursor, setMentionCursor] = useState<number | null>(null);
+  const [mentionPosition, setMentionPosition] = useState<{ left: number; top: number } | null>(
+    null
+  );
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const { data: issueData, isLoading } = useQuery({
     queryKey: ["issue", issueId],
@@ -129,8 +157,36 @@ export default function IssueDetailPage() {
     enabled: Boolean(currentWorkspaceId)
   });
 
+  const mentionMap = useMemo(() => {
+    const map = new Map<string, string>();
+    (membersData ?? []).forEach((member) => {
+      map.set(member.user.email.toLowerCase(), member.user.name);
+    });
+    return map;
+  }, [membersData]);
+
+  const { data: linkedArticles } = useQuery({
+    queryKey: ["articles", currentWorkspaceId, issueId],
+    queryFn: async () => {
+      if (!currentWorkspaceId || !issueId) return [];
+      const res = await api.get(`/api/workspaces/${currentWorkspaceId}/articles`, {
+        params: { issueId }
+      });
+      return res.data.articles as Article[];
+    },
+    enabled: Boolean(currentWorkspaceId && issueId)
+  });
+
   const editForm = useForm<EditForm>({
-    resolver: zodResolver(editSchema)
+    resolver: zodResolver(editSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      labels: "",
+      assigneeId: "",
+      status: "OPEN",
+      priority: "MEDIUM"
+    }
   });
 
   useEffect(() => {
@@ -139,7 +195,9 @@ export default function IssueDetailPage() {
       title: issueData.title,
       description: issueData.description ?? "",
       labels: issueData.labels?.join(", ") ?? "",
-      assigneeId: issueData.assigneeId?._id ?? ""
+      assigneeId: issueData.assigneeId?._id ?? "",
+      status: issueData.status,
+      priority: issueData.priority
     });
   }, [issueData, editForm]);
 
@@ -158,6 +216,7 @@ export default function IssueDetailPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["issues", currentWorkspaceId] });
       await queryClient.invalidateQueries({ queryKey: ["issue", issueId] });
+      setIsEditing(false);
       toast.success("Issue updated");
     },
     onError: () => toast.error("Unable to update issue")
@@ -187,19 +246,106 @@ export default function IssueDetailPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["issue-comments", issueId] });
       commentForm.reset();
+      setMentionIndex(null);
+      setMentionQuery("");
+      setMentionCursor(null);
+      setMentionPosition(null);
       toast.success("Comment added");
     },
     onError: () => toast.error("Unable to add comment")
   });
 
-  const handleStatusChange = (value: IssueDetail["status"]) => {
-    if (!canEdit) return;
-    updateMutation.mutate({ status: value });
+  const commentRegister = commentForm.register("body");
+
+  const mentionOptions = (membersData ?? []).map((member) => member.user);
+  const mentionMatches =
+    mentionIndex !== null
+      ? mentionOptions.filter((member) => {
+          const query = mentionQuery.toLowerCase();
+          return (
+            !query ||
+            member.name.toLowerCase().includes(query) ||
+            member.email.toLowerCase().includes(query)
+          );
+        })
+      : [];
+
+  const handleCommentChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    commentRegister.onChange(event);
+    const value = event.target.value;
+    const cursor = event.target.selectionStart ?? value.length;
+    const lastAt = value.lastIndexOf("@", cursor - 1);
+    if (lastAt === -1) {
+      setMentionIndex(null);
+      setMentionQuery("");
+      setMentionCursor(null);
+      setMentionPosition(null);
+      return;
+    }
+
+    const fragment = value.slice(lastAt + 1, cursor);
+    if (fragment.includes(" ") || fragment.includes("\n")) {
+      setMentionIndex(null);
+      setMentionQuery("");
+      setMentionCursor(null);
+      setMentionPosition(null);
+      return;
+    }
+
+    setMentionIndex(lastAt);
+    setMentionQuery(fragment);
+    setMentionCursor(cursor);
+
+    const textarea = textareaRef.current;
+    if (textarea) {
+      const style = window.getComputedStyle(textarea);
+      const parsedLineHeight = Number.parseFloat(style.lineHeight);
+      const lineHeight = Number.isNaN(parsedLineHeight) ? 18 : parsedLineHeight;
+      const paddingLeft = parseFloat(style.paddingLeft || "0");
+      const paddingTop = parseFloat(style.paddingTop || "0");
+      const font =
+        style.font ||
+        `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+      const textBefore = value.slice(0, cursor);
+      const lines = textBefore.split("\n");
+      const lastLine = lines[lines.length - 1] ?? "";
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.font = font;
+        const textWidth = ctx.measureText(lastLine).width;
+        const leftRaw = paddingLeft + textWidth;
+        const topRaw = paddingTop + lineHeight * (lines.length - 1);
+        const dropdownWidth = 240;
+        const maxLeft = Math.max(8, textarea.clientWidth - dropdownWidth - 8);
+        const left = Math.min(Math.max(leftRaw, 8), maxLeft);
+        setMentionPosition({ left, top: topRaw + lineHeight });
+      }
+    }
   };
 
-  const handlePriorityChange = (value: IssueDetail["priority"]) => {
-    if (!canEdit) return;
-    updateMutation.mutate({ priority: value });
+  const handleSelectMention = (member: Member["user"]) => {
+    const value = commentForm.getValues("body") ?? "";
+    const cursor = mentionCursor ?? value.length;
+    const start = mentionIndex ?? value.lastIndexOf("@", cursor - 1);
+    if (start === -1) {
+      return;
+    }
+    const mentionText = `@${member.email}`;
+    const nextValue = `${value.slice(0, start)}${mentionText} ${value.slice(cursor)}`;
+    commentForm.setValue("body", nextValue, { shouldDirty: true, shouldTouch: true });
+    setMentionIndex(null);
+    setMentionQuery("");
+    setMentionCursor(null);
+    setMentionPosition(null);
+
+    requestAnimationFrame(() => {
+      if (textareaRef.current) {
+        const nextCursor = start + mentionText.length + 1;
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(nextCursor, nextCursor);
+      }
+    });
   };
 
   const handleEditSubmit = (values: EditForm) => {
@@ -214,20 +360,45 @@ export default function IssueDetailPage() {
       title: values.title,
       description: values.description ?? "",
       labels,
-      assigneeId: values.assigneeId || null
+      assigneeId: values.assigneeId || null,
+      status: values.status,
+      priority: values.priority
     });
+  };
+
+  const handleStatusSelect = (event: ChangeEvent<HTMLSelectElement>) => {
+    if (!canEdit) return;
+    const nextStatus = event.target.value as IssueDetail["status"];
+    updateMutation.mutate({ status: nextStatus });
   };
 
   const handleDelete = () => {
     if (!canEdit) return;
-    if (window.confirm("Delete this issue? This cannot be undone.")) {
-      deleteMutation.mutate();
-    }
+    deleteMutation.mutate();
+    setDeleteOpen(false);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    if (!issueData) return;
+    editForm.reset({
+      title: issueData.title,
+      description: issueData.description ?? "",
+      labels: issueData.labels?.join(", ") ?? "",
+      assigneeId: issueData.assigneeId?._id ?? "",
+      status: issueData.status,
+      priority: issueData.priority
+    });
+  };
+
+  const handleAssignToMe = () => {
+    if (!user?.id || !canEdit) return;
+    updateMutation.mutate({ assigneeId: user.id });
   };
 
   if (!issueId) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <h2 className="text-lg font-semibold">Issue not found</h2>
       </div>
     );
@@ -237,113 +408,147 @@ export default function IssueDetailPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <Link className="text-xs font-medium text-slate-500" to="/app/issues">
-            ? Back to issues
+          <Link
+            className="inline-flex items-center gap-2 text-xs font-medium text-blue-600 hover:text-blue-700"
+            to="/app/issues"
+          >
+            <svg
+              aria-hidden="true"
+              className="h-4 w-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+            Back to issues
           </Link>
-          <div className="mt-2 flex flex-wrap items-center gap-3">
-            <p className="text-xs font-semibold uppercase text-slate-400">
+          <div className="mt-2 flex flex-wrap items-baseline gap-3">
+            <span className="text-lg font-semibold tracking-wide text-blue-700">
               {issueData?.ticketId ?? "ISSUE"}
-            </p>
-            <h1 className="text-2xl font-semibold text-slate-900">
+            </span>
+            <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
               {issueData?.title ?? "Issue details"}
             </h1>
           </div>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-            {issueData ? (
-              <>
-                <Badge variant="outline">{statusLabels[issueData.status]}</Badge>
-                <span
-                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 font-medium ${
-                    priorityStyles[issueData.priority]
-                  }`}
-                >
-                  {priorityLabels[issueData.priority]}
-                </span>
-                <span className="text-slate-400">?</span>
-                <span className="text-blue-600 font-medium">
-                  {issueData.assigneeId?.name ?? "Unassigned"}
-                </span>
-              </>
-            ) : null}
-          </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleDelete} disabled={!canEdit}>
-            Delete issue
-          </Button>
-          <Button onClick={editForm.handleSubmit(handleEditSubmit)} disabled={!canEdit}>
-            Save changes
-          </Button>
+          {canEdit && user && issueData?.assigneeId?._id !== user.id ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAssignToMe}
+              disabled={updateMutation.isPending}
+            >
+              Assign to me
+            </Button>
+          ) : null}
+          {isEditing ? (
+            <>
+              <Button variant="outline" onClick={handleCancelEdit}>
+                Cancel
+              </Button>
+              <Button
+                onClick={editForm.handleSubmit(handleEditSubmit)}
+                disabled={!canEdit || updateMutation.isPending}
+              >
+                Save changes
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditing(true)}
+              disabled={!canEdit}
+              aria-label="Edit issue"
+            >
+              <svg
+                aria-hidden="true"
+                className="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              </svg>
+            </Button>
+          )}
+          <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" disabled={!canEdit} aria-label="Delete issue">
+                <svg
+                  aria-hidden="true"
+                  className="h-4 w-4 text-red-600"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M3 6h18" />
+                  <path d="M8 6V4h8v2" />
+                  <path d="M19 6l-1 14H6L5 6" />
+                  <path d="M10 11v6" />
+                  <path d="M14 11v6" />
+                </svg>
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Delete issue?</DialogTitle>
+                <DialogDescription>
+                  This permanently removes the issue, comments, and activity log.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleDelete}
+                  className="bg-red-600 text-white hover:bg-red-700"
+                  disabled={deleteMutation.isPending}
+                >
+                  Delete
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
       {isLoading || !issueData ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-sm text-slate-500">Loading issue...</p>
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-sm text-slate-500 dark:text-slate-400">Loading issue...</p>
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-          <div className="space-y-6">
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-semibold">Description</h2>
-              <p className="mt-2 text-sm text-slate-600">
-                {issueData.description || "No description yet."}
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-semibold">Comments</h2>
-              <div className="mt-4 space-y-3">
-                {commentsData?.length ? (
-                  commentsData.map((comment) => (
-                    <div
-                      key={comment._id}
-                      className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-                    >
-                      <div className="flex items-center justify-between text-xs text-slate-500">
-                        <span>{comment.userId?.name ?? "User"}</span>
-                        <span>{new Date(comment.createdAt).toLocaleString()}</span>
-                      </div>
-                      <p className="mt-2 text-slate-700">{renderCommentBody(comment.body)}</p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-slate-500">No comments yet.</p>
-                )}
-              </div>
-              <form
-                className="mt-4 space-y-3"
-                onSubmit={commentForm.handleSubmit((values) => commentMutation.mutate(values))}
-              >
-                <Textarea
-                  placeholder="Add a comment (use @email to mention)"
-                  {...commentForm.register("body")}
-                />
-                {commentForm.formState.errors.body ? (
-                  <p className="text-xs text-red-500">
-                    {commentForm.formState.errors.body.message}
-                  </p>
-                ) : null}
-                <div className="flex justify-end">
-                  <Button type="submit" disabled={commentMutation.isPending}>
-                    Post comment
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-semibold">Details</h2>
+        <div className="space-y-6">
+          {isEditing ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <h2 className="text-lg font-semibold">Edit details</h2>
               {!canEdit ? (
-                <p className="mt-2 text-xs text-slate-500">
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                   Only owners, admins, and members can edit this issue.
                 </p>
               ) : null}
-              <form className="mt-4 space-y-4">
+              <form
+                className="mt-4 space-y-4"
+                onSubmit={editForm.handleSubmit(handleEditSubmit)}
+              >
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700" htmlFor="title">
+                  <label
+                    className="text-sm font-medium text-slate-700 dark:text-slate-200"
+                    htmlFor="title"
+                  >
                     Title
                   </label>
                   <Input id="title" {...editForm.register("title")} disabled={!canEdit} />
@@ -354,7 +559,10 @@ export default function IssueDetailPage() {
                   ) : null}
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700" htmlFor="description">
+                  <label
+                    className="text-sm font-medium text-slate-700 dark:text-slate-200"
+                    htmlFor="description"
+                  >
                     Description
                   </label>
                   <Textarea
@@ -363,19 +571,63 @@ export default function IssueDetailPage() {
                     disabled={!canEdit}
                   />
                 </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <label
+                      className="text-sm font-medium text-slate-700 dark:text-slate-200"
+                      htmlFor="status"
+                    >
+                      Status
+                    </label>
+                    <select
+                      id="status"
+                      className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      {...editForm.register("status")}
+                      disabled={!canEdit}
+                    >
+                      <option value="OPEN">Open</option>
+                      <option value="IN_PROGRESS">In progress</option>
+                      <option value="DONE">Done</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label
+                      className="text-sm font-medium text-slate-700 dark:text-slate-200"
+                      htmlFor="priority"
+                    >
+                      Priority
+                    </label>
+                    <select
+                      id="priority"
+                      className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      {...editForm.register("priority")}
+                      disabled={!canEdit}
+                    >
+                      <option value="LOW">Low</option>
+                      <option value="MEDIUM">Medium</option>
+                      <option value="HIGH">High</option>
+                    </select>
+                  </div>
+                </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700" htmlFor="labels">
+                  <label
+                    className="text-sm font-medium text-slate-700 dark:text-slate-200"
+                    htmlFor="labels"
+                  >
                     Labels
                   </label>
                   <Input id="labels" {...editForm.register("labels")} disabled={!canEdit} />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700" htmlFor="assigneeId">
+                  <label
+                    className="text-sm font-medium text-slate-700 dark:text-slate-200"
+                    htmlFor="assigneeId"
+                  >
                     Assignee
                   </label>
                   <select
                     id="assigneeId"
-                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                     {...editForm.register("assigneeId")}
                     disabled={!canEdit}
                   >
@@ -388,54 +640,76 @@ export default function IssueDetailPage() {
                   </select>
                 </div>
               </form>
-
-              <div className="mt-6 space-y-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Status
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {Object.keys(statusLabels).map((status) => (
-                      <button
-                        key={status}
-                        type="button"
-                        onClick={() => handleStatusChange(status as IssueDetail["status"])}
-                        className={`rounded-full px-3 py-1 text-xs font-medium ${
-                          issueData.status === status
-                            ? "bg-slate-900 text-white"
-                            : "border border-slate-200 text-slate-600"
-                        } ${!canEdit ? "opacity-50" : ""}`}
-                        disabled={!canEdit}
+            </div>
+          ) : (
+            <>
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">Overview</h2>
+                  <div className="flex items-center gap-2 text-xs">
+                    {canEdit ? (
+                      <select
+                        className="h-7 rounded-full border border-slate-200 bg-white px-2 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                        value={issueData.status}
+                        onChange={handleStatusSelect}
+                        disabled={updateMutation.isPending}
                       >
-                        {statusLabels[status as IssueDetail["status"]]}
-                      </button>
-                    ))}
+                        <option value="OPEN">Open</option>
+                        <option value="IN_PROGRESS">In progress</option>
+                        <option value="DONE">Done</option>
+                      </select>
+                    ) : (
+                      <span className="rounded-full border border-slate-200 px-2.5 py-0.5 text-slate-600">
+                        {statusLabels[issueData.status]}
+                      </span>
+                    )}
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 font-medium ${priorityStyles[issueData.priority]}`}
+                    >
+                      {priorityLabels[issueData.priority]}
+                    </span>
                   </div>
                 </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Priority
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {Object.keys(priorityLabels).map((priority) => (
-                      <button
-                        key={priority}
-                        type="button"
-                        onClick={() => handlePriorityChange(priority as IssueDetail["priority"])}
-                        className={`rounded-full border px-3 py-1 text-xs font-medium ${
-                          issueData.priority === priority
-                            ? priorityStyles[priority as IssueDetail["priority"]]
-                            : "border-slate-200 text-slate-600"
-                        } ${!canEdit ? "opacity-50" : ""}`}
-                        disabled={!canEdit}
-                      >
-                        {priorityLabels[priority as IssueDetail["priority"]]}
-                      </button>
-                    ))}
+                <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Assignee
+                    </p>
+                    <p className="mt-1 font-medium text-blue-600">
+                      {issueData.assigneeId?.name ?? "Unassigned"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Reporter
+                    </p>
+                    <p className="mt-1 text-slate-700 dark:text-slate-200">
+                      {issueData.createdBy?.name ?? "Unknown"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Created
+                    </p>
+                    <p className="mt-1 text-slate-700 dark:text-slate-200">
+                      {issueData.createdAt
+                        ? new Date(issueData.createdAt).toLocaleString()
+                        : "Unknown"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Updated
+                    </p>
+                    <p className="mt-1 text-slate-700 dark:text-slate-200">
+                      {issueData.updatedAt
+                        ? new Date(issueData.updatedAt).toLocaleString()
+                        : "Unknown"}
+                    </p>
                   </div>
                 </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <div className="mt-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                     Tags
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -449,12 +723,113 @@ export default function IssueDetailPage() {
                         </span>
                       ))
                     ) : (
-                      <span className="text-sm text-slate-500">No tags</span>
+                      <span className="text-sm text-slate-500 dark:text-slate-400">
+                        No tags
+                      </span>
                     )}
                   </div>
                 </div>
               </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <h2 className="text-lg font-semibold">Description</h2>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                  {issueData.description || "No description yet."}
+                </p>
+              </div>
+
+              {linkedArticles && linkedArticles.length > 0 ? (
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                  <h2 className="text-lg font-semibold">Linked knowledge base</h2>
+                  <div className="mt-3 space-y-2">
+                    {linkedArticles.map((article) => (
+                      <Link
+                        key={article._id}
+                        to={`/app/kb?articleId=${article._id}`}
+                        className="block rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:border-blue-200 hover:text-blue-700 dark:border-slate-700 dark:text-slate-200 dark:hover:border-blue-500 dark:hover:text-blue-300"
+                      >
+                        {article.title}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </>
+          )}
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <h2 className="text-lg font-semibold">Comments</h2>
+            <div className="mt-4 space-y-3">
+              {commentsData?.length ? (
+                commentsData.map((comment) => (
+                  <div
+                    key={comment._id}
+                    className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-950"
+                  >
+                    <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                      <span>{comment.userId?.name ?? "User"}</span>
+                      <span>{new Date(comment.createdAt).toLocaleString()}</span>
+                    </div>
+                    <p className="mt-2 text-slate-700 dark:text-slate-200">
+                      {renderCommentBody(comment.body, mentionMap)}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-slate-500 dark:text-slate-400">No comments yet.</p>
+              )}
             </div>
+            <form
+              className="mt-4 space-y-3"
+              onSubmit={commentForm.handleSubmit((values) => commentMutation.mutate(values))}
+            >
+              <div className="relative">
+                <Textarea
+                  ref={(element) => {
+                    commentRegister.ref(element);
+                    textareaRef.current = element;
+                  }}
+                  placeholder="Add a comment (use @ to mention)"
+                  {...commentRegister}
+                  onChange={handleCommentChange}
+                />
+                {mentionIndex !== null && mentionMatches.length > 0 ? (
+                  <div
+                    className="absolute left-0 top-full z-10 mt-2 max-h-48 w-60 max-w-[70%] overflow-auto rounded-md border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-800 dark:bg-slate-900"
+                    style={
+                      mentionPosition
+                        ? { left: mentionPosition.left, top: mentionPosition.top }
+                        : undefined
+                    }
+                  >
+                    {mentionMatches.map((member) => (
+                      <button
+                        key={member.id}
+                        type="button"
+                        className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          handleSelectMention(member);
+                        }}
+                      >
+                        <span className="font-medium">{member.name}</span>
+                        <span className="text-xs text-slate-500">{member.email}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+              {commentForm.formState.errors.body ? (
+                <p className="text-xs text-red-500">
+                  {commentForm.formState.errors.body.message}
+                </p>
+              ) : null}
+              <div className="flex justify-end">
+                <Button type="submit" disabled={commentMutation.isPending}>
+                  Post comment
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}

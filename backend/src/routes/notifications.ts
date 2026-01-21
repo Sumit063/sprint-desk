@@ -20,6 +20,16 @@ router.get("/", async (req, res) => {
   return res.json({ notifications });
 });
 
+router.patch("/read-all", async (req, res) => {
+  const now = new Date();
+  const result = await NotificationModel.updateMany(
+    { userId: req.userId, readAt: null },
+    { readAt: now }
+  );
+
+  return res.json({ updated: result.modifiedCount });
+});
+
 router.patch("/:id/read", async (req, res) => {
   const notification = await NotificationModel.findOne({
     _id: req.params.id,

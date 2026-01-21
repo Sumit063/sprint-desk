@@ -15,11 +15,11 @@ export default function WorkspaceSwitcher() {
 
   return (
     <div className="space-y-2">
-      <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+      <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
         Workspace
       </label>
       <select
-        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
         value={currentWorkspaceId ?? ""}
         onChange={(event) => setCurrentWorkspace(event.target.value)}
       >

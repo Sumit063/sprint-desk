@@ -45,16 +45,16 @@ export default function LoginPage() {
     >
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
         {formError ? (
-          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
+          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600 dark:border-red-900 dark:bg-red-900/30 dark:text-red-200">
             {formError}
           </p>
         ) : null}
         <div>
-          <label className="text-sm font-medium text-slate-700" htmlFor="email">
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-200" htmlFor="email">
             Email
           </label>
           <input
-            className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             id="email"
             type="email"
             {...register("email")}
@@ -65,13 +65,13 @@ export default function LoginPage() {
         </div>
         <div>
           <label
-            className="text-sm font-medium text-slate-700"
+            className="text-sm font-medium text-slate-700 dark:text-slate-200"
             htmlFor="password"
           >
             Password
           </label>
           <input
-            className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             id="password"
             type="password"
             {...register("password")}
@@ -81,7 +81,7 @@ export default function LoginPage() {
           ) : null}
         </div>
         <button
-          className="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+          className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
           type="submit"
           disabled={isSubmitting}
         >

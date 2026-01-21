@@ -9,6 +9,7 @@ let socket: Socket | null = null;
 
 export function useWorkspaceSocket() {
   const accessToken = useAuthStore((state) => state.accessToken);
+  const userId = useAuthStore((state) => state.user?.id);
   const workspaceId = useWorkspaceStore((state) => state.currentWorkspaceId);
   const queryClient = useQueryClient();
 
@@ -43,31 +44,58 @@ export function useWorkspaceSocket() {
       }
     });
 
-    const handleIssueCreated = (payload: { issueId?: string; title?: string }) => {
-      toast.info(payload.title ? `Issue created: ${payload.title}` : "Issue created");
+    const handleIssueCreated = (payload: {
+      issueId?: string;
+      title?: string;
+      actorId?: string;
+    }) => {
+      const isSelf = Boolean(payload.actorId && payload.actorId === userId);
+      if (!isSelf) {
+        toast.info(payload.title ? `Issue created: ${payload.title}` : "Issue created", {
+          id: payload.issueId ? `issue-created-${payload.issueId}` : undefined
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ["issues", workspaceId] });
     };
 
-    const handleIssueUpdated = (payload: { issueId?: string }) => {
-      toast.message("Issue updated");
+    const handleIssueUpdated = (payload: {
+      issueId?: string;
+      actorId?: string;
+      fields?: string[];
+    }) => {
+      const isSelf = Boolean(payload.actorId && payload.actorId === userId);
+      const isAssignmentOnly = payload.fields?.length === 1 && payload.fields[0] === "assigneeId";
+      if (!isSelf && !isAssignmentOnly) {
+        toast.message("Issue updated", {
+          id: payload.issueId ? `issue-updated-${payload.issueId}` : undefined
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ["issues", workspaceId] });
       if (payload.issueId) {
         queryClient.invalidateQueries({ queryKey: ["issue", payload.issueId] });
       }
     };
 
-    const handleCommentAdded = (payload: { issueId?: string }) => {
-      toast.message("New comment added");
+    const handleCommentAdded = (payload: { issueId?: string; actorId?: string }) => {
+      const isSelf = Boolean(payload.actorId && payload.actorId === userId);
+      if (!isSelf) {
+        toast.message("New comment added", {
+          id: payload.issueId ? `comment-added-${payload.issueId}` : undefined
+        });
+      }
       if (payload.issueId) {
         queryClient.invalidateQueries({ queryKey: ["issue-comments", payload.issueId] });
       }
     };
 
-    const handleNotification = (payload: { message?: string }) => {
+    const handleNotification = (payload: { message?: string; notificationId?: string }) => {
       if (payload.message) {
-        toast.message(payload.message);
+        toast.message(payload.message, {
+          id: payload.notificationId ? `notification-${payload.notificationId}` : undefined
+        });
       }
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications", "unread"] });
     };
 
     socket.on("issue_created", handleIssueCreated);
@@ -81,5 +109,5 @@ export function useWorkspaceSocket() {
       socket?.off("comment_added", handleCommentAdded);
       socket?.off("notification_created", handleNotification);
     };
-  }, [workspaceId, queryClient]);
+  }, [workspaceId, queryClient, userId]);
 }
