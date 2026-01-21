@@ -20,6 +20,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { Avatar } from "@/components/ui/avatar";
+import {
+  statusLabels,
+  statusStyles,
+  priorityLabels,
+  priorityStyles,
+  type IssuePriority,
+  type IssueStatus
+} from "@/lib/issueMeta";
+import { setIssueBreadcrumb, setKbBreadcrumb } from "@/lib/breadcrumbs";
 
 const commentSchema = z.object({
   body: z.string().min(1, "Comment cannot be empty")
@@ -43,11 +53,11 @@ type IssueDetail = {
   ticketId?: string;
   title: string;
   description: string;
-  status: "OPEN" | "IN_PROGRESS" | "DONE";
-  priority: "LOW" | "MEDIUM" | "HIGH";
+  status: IssueStatus;
+  priority: IssuePriority;
   labels: string[];
-  assigneeId?: { _id: string; name: string; email: string } | null;
-  createdBy?: { name: string; email: string } | null;
+  assigneeId?: { _id: string; name: string; email: string; avatarUrl?: string | null } | null;
+  createdBy?: { name: string; email: string; avatarUrl?: string | null } | null;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -55,38 +65,23 @@ type IssueDetail = {
 type Comment = {
   _id: string;
   body: string;
-  userId: { name: string; email: string };
+  userId: { name: string; email: string; avatarUrl?: string | null };
   createdAt: string;
 };
 
 type Member = {
   id: string;
   role: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
-  user: { id: string; name: string; email: string };
+  user: { id: string; name: string; email: string; avatarUrl?: string | null };
 };
 
 type Article = {
   _id: string;
   title: string;
+  kbId?: string;
+  linkedIssueIds?: string[];
 };
 
-const statusLabels: Record<IssueDetail["status"], string> = {
-  OPEN: "Open",
-  IN_PROGRESS: "In progress",
-  DONE: "Done"
-};
-
-const priorityLabels: Record<IssueDetail["priority"], string> = {
-  LOW: "Low",
-  MEDIUM: "Medium",
-  HIGH: "High"
-};
-
-const priorityStyles: Record<IssueDetail["priority"], string> = {
-  LOW: "border-border bg-muted text-foreground-muted",
-  MEDIUM: "border-border bg-muted text-foreground",
-  HIGH: "border-border bg-muted text-accent"
-};
 
 const mentionRegex = /@([\w.+-]+@[\w.-]+\.[A-Za-z]{2,})/g;
 
@@ -126,6 +121,8 @@ export default function IssueDetailPage() {
   const [mentionPosition, setMentionPosition] = useState<{ left: number; top: number } | null>(
     null
   );
+  const [linkKbOpen, setLinkKbOpen] = useState(false);
+  const [linkKbQuery, setLinkKbQuery] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const { data: issueData, isLoading } = useQuery({
@@ -178,6 +175,16 @@ export default function IssueDetailPage() {
     enabled: Boolean(currentWorkspaceId && issueId)
   });
 
+  const { data: allArticles } = useQuery({
+    queryKey: ["articles", currentWorkspaceId],
+    queryFn: async () => {
+      if (!currentWorkspaceId) return [];
+      const res = await api.get(`/api/workspaces/${currentWorkspaceId}/articles`);
+      return res.data.articles as Article[];
+    },
+    enabled: Boolean(currentWorkspaceId)
+  });
+
   const editForm = useForm<EditForm>({
     resolver: zodResolver(editSchema),
     defaultValues: {
@@ -201,6 +208,13 @@ export default function IssueDetailPage() {
       priority: issueData.priority
     });
   }, [issueData, editForm]);
+
+  useEffect(() => {
+    if (!issueId || !issueData?.ticketId || typeof window === "undefined") {
+      return;
+    }
+    setIssueBreadcrumb(issueId, issueData.ticketId);
+  }, [issueId, issueData?.ticketId]);
 
   const updateMutation = useMutation({
     mutationFn: async (payload: {
@@ -239,12 +253,35 @@ export default function IssueDetailPage() {
     resolver: zodResolver(commentSchema)
   });
 
+  const linkArticleMutation = useMutation({
+    mutationFn: async (article: Article) => {
+      if (!currentWorkspaceId || !issueId) return;
+      const nextLinked = Array.from(
+        new Set([...(article.linkedIssueIds ?? []), issueId])
+      );
+      await api.patch(`/api/workspaces/${currentWorkspaceId}/articles/${article._id}`, {
+        linkedIssueIds: nextLinked
+      });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["articles", currentWorkspaceId] });
+      await queryClient.invalidateQueries({
+        queryKey: ["articles", currentWorkspaceId, issueId]
+      });
+      setLinkKbOpen(false);
+      setLinkKbQuery("");
+      toast.success("Knowledge base linked");
+    },
+    onError: () => toast.error("Unable to link knowledge base")
+  });
+
   const commentMutation = useMutation({
     mutationFn: async (payload: CommentForm) => {
       if (!issueId) return;
       await api.post(`/api/issues/${issueId}/comments`, payload);
     },
     onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["issue", issueId] });
       await queryClient.invalidateQueries({ queryKey: ["issue-comments", issueId] });
       commentForm.reset();
       setMentionIndex(null);
@@ -270,6 +307,20 @@ export default function IssueDetailPage() {
           );
         })
       : [];
+
+  const linkedArticleIds = useMemo(() => {
+    return new Set((linkedArticles ?? []).map((article) => article._id));
+  }, [linkedArticles]);
+
+  const availableArticles = useMemo(() => {
+    const list = (allArticles ?? []).filter((article) => !linkedArticleIds.has(article._id));
+    const query = linkKbQuery.trim().toLowerCase();
+    if (!query) return list;
+    return list.filter((article) => {
+      const id = article.kbId?.toLowerCase() ?? "";
+      return id.includes(query) || article.title.toLowerCase().includes(query);
+    });
+  }, [allArticles, linkedArticleIds, linkKbQuery]);
 
   const handleCommentChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
     commentRegister.onChange(event);
@@ -622,7 +673,9 @@ export default function IssueDetailPage() {
                         <option value="DONE">Done</option>
                       </select>
                     ) : (
-                      <span className="rounded-md border border-border px-2.5 py-0.5 text-foreground-muted">
+                      <span
+                        className={`rounded-md border px-2.5 py-0.5 ${statusStyles[issueData.status]}`}
+                      >
                         {statusLabels[issueData.status]}
                       </span>
                     )}
@@ -638,17 +691,33 @@ export default function IssueDetailPage() {
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-foreground-muted">
                       Assignee
                     </p>
-                    <p className="mt-1 font-medium text-accent">
-                      {issueData.assigneeId?.name ?? "Unassigned"}
-                    </p>
+                    <div className="mt-1 flex items-center gap-2 text-foreground">
+                      <Avatar
+                        size="xs"
+                        name={issueData.assigneeId?.name ?? "Unassigned"}
+                        email={issueData.assigneeId?.email}
+                        src={issueData.assigneeId?.avatarUrl ?? null}
+                      />
+                      <span className="text-sm font-medium">
+                        {issueData.assigneeId?.name ?? "Unassigned"}
+                      </span>
+                    </div>
                   </div>
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-foreground-muted">
                       Reporter
                     </p>
-                    <p className="mt-1 text-foreground">
-                      {issueData.createdBy?.name ?? "Unknown"}
-                    </p>
+                    <div className="mt-1 flex items-center gap-2 text-foreground">
+                      <Avatar
+                        size="xs"
+                        name={issueData.createdBy?.name ?? "Unknown"}
+                        email={issueData.createdBy?.email}
+                        src={issueData.createdBy?.avatarUrl ?? null}
+                      />
+                      <span className="text-sm font-medium">
+                        {issueData.createdBy?.name ?? "Unknown"}
+                      </span>
+                    </div>
                   </div>
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-foreground-muted">
@@ -701,22 +770,86 @@ export default function IssueDetailPage() {
                 </p>
               </div>
 
-              {linkedArticles && linkedArticles.length > 0 ? (
-                <div className="rounded-md border border-border bg-surface p-6">
+              <div className="rounded-md border border-border bg-surface p-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <h2 className="text-lg font-semibold">Linked knowledge base</h2>
+                  {canEdit ? (
+                    <Dialog open={linkKbOpen} onOpenChange={setLinkKbOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          Add KB
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Link knowledge base</DialogTitle>
+                          <DialogDescription>
+                            Search by KB ID or article title.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="mt-4 space-y-3">
+                          <Input
+                            placeholder="Search KB ID or title"
+                            value={linkKbQuery}
+                            onChange={(event) => setLinkKbQuery(event.target.value)}
+                          />
+                          <div className="max-h-64 space-y-2 overflow-y-auto">
+                            {availableArticles.length === 0 ? (
+                              <p className="text-sm text-foreground-muted">
+                                No KB articles available to link.
+                              </p>
+                            ) : (
+                              availableArticles.map((article) => (
+                                <div
+                                  key={article._id}
+                                  className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2"
+                                >
+                                  <div>
+                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground-muted">
+                                      {article.kbId ?? "KB"}
+                                    </p>
+                                    <p className="text-sm font-medium text-foreground">
+                                      {article.title}
+                                    </p>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => linkArticleMutation.mutate(article)}
+                                    disabled={linkArticleMutation.isPending}
+                                  >
+                                    Link
+                                  </Button>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  ) : null}
+                </div>
+                {linkedArticles && linkedArticles.length > 0 ? (
                   <div className="mt-3 space-y-2">
                     {linkedArticles.map((article) => (
                       <Link
                         key={article._id}
                         to={`/app/kb?articleId=${article._id}`}
+                        onClick={() =>
+                          setKbBreadcrumb(article._id, article.kbId ?? article.title ?? "Article")
+                        }
                         className="block rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground hover:border-accent hover:text-accent"
                       >
-                        {article.title}
+                        {article.kbId ? `${article.kbId} — ${article.title}` : article.title}
                       </Link>
                     ))}
                   </div>
-                </div>
-              ) : null}
+                ) : (
+                  <p className="mt-3 text-sm text-foreground-muted">
+                    No knowledge base linked yet.
+                  </p>
+                )}
+              </div>
             </>
           )}
 
@@ -730,7 +863,17 @@ export default function IssueDetailPage() {
                     className="rounded-md border border-border bg-muted px-3 py-2 text-sm"
                   >
                     <div className="flex items-center justify-between text-xs text-foreground-muted">
-                      <span>{comment.userId?.name ?? "User"}</span>
+                      <div className="flex items-center gap-2 text-foreground">
+                        <Avatar
+                          size="xs"
+                          name={comment.userId?.name ?? "User"}
+                          email={comment.userId?.email}
+                          src={comment.userId?.avatarUrl ?? null}
+                        />
+                        <span className="text-xs font-medium text-foreground">
+                          {comment.userId?.name ?? "User"}
+                        </span>
+                      </div>
                       <span>{new Date(comment.createdAt).toLocaleString()}</span>
                     </div>
                     <p className="mt-2 text-foreground">

@@ -10,7 +10,9 @@ const userSchema = new Schema(
       enum: ["local", "google", "otp", "demo"],
       default: "local"
     },
-    googleId: { type: String, unique: true, sparse: true }
+    googleId: { type: String, unique: true, sparse: true },
+    avatarUrl: { type: String, default: null },
+    contact: { type: String, default: null }
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );

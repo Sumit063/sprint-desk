@@ -16,6 +16,8 @@ import api from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
 import WorkspaceSwitcher from "@/components/WorkspaceSwitcher";
 import { useWorkspaceSocket } from "@/hooks/useWorkspaceSocket";
+import { Button } from "@/components/ui/button";
+import { getIssueBreadcrumb, getKbBreadcrumb } from "@/lib/breadcrumbs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +27,7 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Avatar } from "@/components/ui/avatar";
 
 type Notification = {
   _id: string;
@@ -50,6 +53,8 @@ export default function AppShell() {
   const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
   const location = useLocation();
+  const [issueLabelVersion, setIssueLabelVersion] = useState(0);
+  const [kbLabelVersion, setKbLabelVersion] = useState(0);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     if (typeof window === "undefined") return "light";
     const stored = window.localStorage.getItem("theme");
@@ -82,6 +87,20 @@ export default function AppShell() {
     window.localStorage.setItem("theme", theme);
   }, [theme]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleIssueLabel = () => setIssueLabelVersion((value) => value + 1);
+    window.addEventListener("issue-ticket-updated", handleIssueLabel);
+    return () => window.removeEventListener("issue-ticket-updated", handleIssueLabel);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleKbLabel = () => setKbLabelVersion((value) => value + 1);
+    window.addEventListener("kb-article-updated", handleKbLabel);
+    return () => window.removeEventListener("kb-article-updated", handleKbLabel);
+  }, []);
+
   const toggleTheme = () => {
     setTheme((current) => (current === "dark" ? "light" : "dark"));
   };
@@ -90,18 +109,31 @@ export default function AppShell() {
     const segments = location.pathname.split("/").filter(Boolean);
     const appIndex = segments.indexOf("app");
     const items = appIndex >= 0 ? segments.slice(appIndex + 1) : [];
-    return items.map((segment, index) => {
-      if (segment === "issues" && items[index + 1]) {
-        return "Issue";
+    const crumbItems = items.map((segment, index) => {
+      if (segment === "issues") {
+        return "Issues";
+      }
+      if (items[index - 1] === "issues") {
+        return getIssueBreadcrumb(segment);
       }
       return breadcrumbMap[segment] ?? segment;
     });
-  }, [location.pathname]);
+
+    if (items.includes("kb")) {
+      const params = new URLSearchParams(location.search);
+      const articleId = params.get("articleId");
+      if (articleId) {
+        crumbItems.push(getKbBreadcrumb(articleId));
+      }
+    }
+
+    return crumbItems;
+  }, [location.pathname, location.search, issueLabelVersion, kbLabelVersion]);
 
   return (
     <TooltipProvider>
-      <div className="flex min-h-screen bg-background text-foreground">
-        <aside className="flex h-screen w-60 flex-col border-r border-border bg-surface">
+      <div className="flex h-screen overflow-hidden bg-background text-foreground">
+        <aside className="flex h-full w-60 flex-col border-r border-border bg-surface">
           <div className="px-5 py-4">
             <div className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground">
               SprintDesk
@@ -147,17 +179,19 @@ export default function AppShell() {
             })}
           </nav>
           <div className="px-4 pb-4">
-            <button
-              className="w-full rounded-md border border-border px-3 py-2 text-sm text-foreground-muted hover:bg-muted hover:text-foreground"
+            <Button
+              className="w-full justify-center"
+              variant="outline"
+              size="sm"
               type="button"
               onClick={handleLogout}
             >
               Sign out
-            </button>
+            </Button>
           </div>
         </aside>
 
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <header className="flex items-center justify-between border-b border-border bg-surface px-6 py-3">
             <div className="flex items-center gap-2 text-xs text-foreground-muted">
               <span>App</span>
@@ -188,9 +222,7 @@ export default function AppShell() {
                     className="inline-flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground hover:bg-muted"
                     type="button"
                   >
-                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-muted text-xs font-semibold text-foreground">
-                      {user?.name?.slice(0, 1).toUpperCase() ?? "U"}
-                    </span>
+                    <Avatar size="sm" name={user?.name} email={user?.email} src={user?.avatarUrl} />
                     <span className="hidden text-left text-xs font-medium sm:block">
                       {user?.name ?? "User"}
                     </span>

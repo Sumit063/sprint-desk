@@ -67,8 +67,8 @@ router.get("/", async (req, res) => {
     .sort({ createdAt: -1 })
     .skip((page - 1) * limit)
     .limit(limit)
-    .populate("assigneeId", "name email")
-    .populate("createdBy", "name email");
+    .populate("assigneeId", "name email avatarUrl")
+    .populate("createdBy", "name email avatarUrl");
 
   return res.json({
     issues,
@@ -151,8 +151,8 @@ router.get("/:issueId", async (req, res) => {
     _id: req.params.issueId,
     workspaceId: req.workspaceId
   })
-    .populate("assigneeId", "name email")
-    .populate("createdBy", "name email");
+    .populate("assigneeId", "name email avatarUrl")
+    .populate("createdBy", "name email avatarUrl");
 
   if (!issue) {
     return res.status(404).json({ message: "Issue not found" });

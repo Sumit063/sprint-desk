@@ -44,7 +44,7 @@ router.get("/", async (req, res) => {
 
   const comments = await CommentModel.find({ issueId: issue._id })
     .sort({ createdAt: 1 })
-    .populate("userId", "name email");
+    .populate("userId", "name email avatarUrl");
 
   return res.json({ comments });
 });
@@ -65,6 +65,8 @@ router.post("/", validateBody(createCommentSchema), async (req, res) => {
     body: req.body.body
   });
 
+  await IssueModel.updateOne({ _id: issue._id }, { $set: { updatedAt: new Date() } });
+
   await ActivityModel.create({
     workspaceId: issue.workspaceId,
     issueId: issue._id,
@@ -73,7 +75,7 @@ router.post("/", validateBody(createCommentSchema), async (req, res) => {
     meta: { commentId: comment._id }
   });
 
-  const populated = await comment.populate("userId", "name email");
+  const populated = await comment.populate("userId", "name email avatarUrl");
 
   emitWorkspaceEvent(issue.workspaceId.toString(), "comment_added", {
     issueId: issue._id.toString(),

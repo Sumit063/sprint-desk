@@ -8,7 +8,10 @@ import {
 } from "../middleware/workspace";
 import { validateBody } from "../middleware/validate";
 import { InviteModel } from "../models/Invite";
+import { ArticleModel } from "../models/Article";
+import { IssueModel } from "../models/Issue";
 import { MembershipModel, workspaceRoles } from "../models/Membership";
+import { UserModel } from "../models/User";
 import { WorkspaceModel } from "../models/Workspace";
 
 const router = Router();
@@ -193,21 +196,100 @@ router.patch(
 
 router.get("/:id/members", requireWorkspaceMember, async (req, res) => {
   const members = await MembershipModel.find({ workspaceId: req.workspaceId })
-    .populate("userId", "name email")
+    .populate("userId", "name email avatarUrl contact")
     .sort({ createdAt: 1 });
 
   const results = members.map((member) => {
-    const user = member.userId as { _id: string; name: string; email: string } | null;
+    const user = member.userId as {
+      _id: string;
+      name: string;
+      email: string;
+      avatarUrl?: string | null;
+      contact?: string | null;
+    } | null;
     return {
       id: member._id,
       role: member.role,
       user: user
-        ? { id: user._id, name: user.name, email: user.email }
+        ? {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            avatarUrl: user.avatarUrl ?? null,
+            contact: user.contact ?? null
+          }
         : { id: "", name: "", email: "" }
     };
   });
 
   return res.json({ members: results });
+});
+
+router.get("/:id/members/:memberId/overview", requireWorkspaceMember, async (req, res) => {
+  const membership = await MembershipModel.findOne({
+    _id: req.params.memberId,
+    workspaceId: req.workspaceId
+  });
+
+  if (!membership) {
+    return res.status(404).json({ message: "Member not found" });
+  }
+
+  const user = await UserModel.findById(membership.userId).select(
+    "name email avatarUrl contact"
+  );
+
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  const [issuesCreated, issuesAssigned, kbWorkedOnCount] = await Promise.all([
+    IssueModel.countDocuments({ workspaceId: req.workspaceId, createdBy: user._id }),
+    IssueModel.countDocuments({ workspaceId: req.workspaceId, assigneeId: user._id }),
+    ArticleModel.countDocuments({
+      workspaceId: req.workspaceId,
+      $or: [{ createdBy: user._id }, { updatedBy: user._id }]
+    })
+  ]);
+
+  const [recentIssuesCreated, recentIssuesAssigned, recentKbWorkedOn] =
+    await Promise.all([
+      IssueModel.find({ workspaceId: req.workspaceId, createdBy: user._id })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .select("ticketId title status priority"),
+      IssueModel.find({ workspaceId: req.workspaceId, assigneeId: user._id })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .select("ticketId title status priority"),
+      ArticleModel.find({
+        workspaceId: req.workspaceId,
+        $or: [{ createdBy: user._id }, { updatedBy: user._id }]
+      })
+        .sort({ updatedAt: -1 })
+        .limit(5)
+        .select("kbId title updatedAt")
+    ]);
+
+  return res.json({
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      avatarUrl: user.avatarUrl ?? null,
+      contact: user.contact ?? null
+    },
+    stats: {
+      issuesCreated,
+      issuesAssigned,
+      kbWorkedOn: kbWorkedOnCount
+    },
+    recent: {
+      issuesCreated: recentIssuesCreated,
+      issuesAssigned: recentIssuesAssigned,
+      kbWorkedOn: recentKbWorkedOn
+    }
+  });
 });
 
 export default router;

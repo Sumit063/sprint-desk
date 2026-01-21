@@ -6,6 +6,8 @@ type User = {
   id: string;
   email: string;
   name: string;
+  avatarUrl?: string | null;
+  contact?: string | null;
 };
 
 type AuthState = {
@@ -20,6 +22,7 @@ type AuthState = {
   loginAsDemo: (type: "owner" | "member") => Promise<void>;
   register: (payload: { name: string; email: string; password: string }) => Promise<void>;
   logout: () => Promise<void>;
+  updateProfile: (payload: { name?: string; avatarUrl?: string | null; contact?: string | null }) => Promise<void>;
 };
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -76,5 +79,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     setAccessToken(null);
     set({ accessToken: null, user: null });
     useWorkspaceStore.getState().reset();
+  },
+  updateProfile: async (payload) => {
+    const res = await api.patch("/api/users/me", payload);
+    set({ user: res.data.user ?? null });
   }
 }));

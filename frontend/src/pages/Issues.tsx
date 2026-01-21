@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
-import { User } from "lucide-react";
 import api from "@/lib/api";
 import { useWorkspaceStore } from "@/stores/workspaces";
 import { useAuthStore } from "@/stores/auth";
@@ -21,6 +20,16 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar } from "@/components/ui/avatar";
+import {
+  statusLabels,
+  statusStyles,
+  priorityLabels,
+  priorityStyles,
+  type IssuePriority,
+  type IssueStatus
+} from "@/lib/issueMeta";
+import { setIssueBreadcrumb } from "@/lib/breadcrumbs";
 
 const issueSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -38,11 +47,11 @@ type Issue = {
   ticketId?: string;
   title: string;
   description: string;
-  status: "OPEN" | "IN_PROGRESS" | "DONE";
-  priority: "LOW" | "MEDIUM" | "HIGH";
+  status: IssueStatus;
+  priority: IssuePriority;
   labels: string[];
-  assigneeId?: { _id: string; name: string; email: string } | null;
-  createdBy?: { name: string; email: string } | null;
+  assigneeId?: { _id: string; name: string; email: string; avatarUrl?: string | null } | null;
+  createdBy?: { name: string; email: string; avatarUrl?: string | null } | null;
   createdAt: string;
 };
 
@@ -57,23 +66,6 @@ type Member = {
   user: { id: string; name: string; email: string };
 };
 
-const statusLabels: Record<Issue["status"], string> = {
-  OPEN: "Open",
-  IN_PROGRESS: "In progress",
-  DONE: "Done"
-};
-
-const priorityLabels: Record<Issue["priority"], string> = {
-  LOW: "Low",
-  MEDIUM: "Medium",
-  HIGH: "High"
-};
-
-const priorityStyles: Record<Issue["priority"], string> = {
-  LOW: "border-border bg-muted text-foreground-muted",
-  MEDIUM: "border-border bg-muted text-foreground",
-  HIGH: "border-border bg-muted text-accent"
-};
 
 export default function IssuesPage() {
   const currentWorkspaceId = useWorkspaceStore((state) => state.currentWorkspaceId);
@@ -351,9 +343,13 @@ export default function IssuesPage() {
               className="rounded-md border border-border bg-surface p-4 hover:bg-muted"
               role="button"
               tabIndex={0}
-              onClick={() => navigate(`/app/issues/${issue._id}`)}
+              onClick={() => {
+                setIssueBreadcrumb(issue._id, issue.ticketId);
+                navigate(`/app/issues/${issue._id}`);
+              }}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
+                  setIssueBreadcrumb(issue._id, issue.ticketId);
                   navigate(`/app/issues/${issue._id}`);
                 }
               }}
@@ -367,16 +363,25 @@ export default function IssuesPage() {
                     {issue.title}
                   </p>
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-foreground-muted">
-                    <Badge variant="outline">{statusLabels[issue.status]}</Badge>
+                    <Badge variant="outline" className={statusStyles[issue.status]}>
+                      {statusLabels[issue.status]}
+                    </Badge>
                     <span
                       className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${priorityStyles[issue.priority]}`}
                     >
                       {priorityLabels[issue.priority]}
                     </span>
                     <span className="text-foreground-muted">|</span>
-                    <span className="inline-flex items-center gap-1 text-accent font-medium">
-                      <User className="h-4 w-4" />
-                      {issue.assigneeId?.name ?? "Unassigned"}
+                    <span className="inline-flex items-center gap-2 text-foreground">
+                      <Avatar
+                        size="xs"
+                        name={issue.assigneeId?.name ?? "Unassigned"}
+                        email={issue.assigneeId?.email}
+                        src={issue.assigneeId?.avatarUrl ?? null}
+                      />
+                      <span className="text-xs font-medium text-foreground">
+                        {issue.assigneeId?.name ?? "Unassigned"}
+                      </span>
                     </span>
                   </div>
                 </div>

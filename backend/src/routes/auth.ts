@@ -74,7 +74,13 @@ const demoSchema = z.object({
 
 async function issueTokens(
   res: Response,
-  user: { _id: { toString(): string }; email: string; name: string }
+  user: {
+    _id: { toString(): string };
+    email: string;
+    name: string;
+    avatarUrl?: string | null;
+    contact?: string | null;
+  }
 ) {
   const refreshToken = createRefreshToken();
   await RefreshTokenModel.create({
@@ -88,7 +94,13 @@ async function issueTokens(
 
   return {
     accessToken,
-    user: { id: user._id, email: user.email, name: user.name }
+    user: {
+      id: user._id,
+      email: user.email,
+      name: user.name,
+      avatarUrl: user.avatarUrl ?? null,
+      contact: user.contact ?? null
+    }
   };
 }
 
@@ -345,7 +357,13 @@ router.post("/refresh", async (req, res) => {
 
   return res.json({
     accessToken,
-    user: { id: user._id, email: user.email, name: user.name }
+    user: {
+      id: user._id,
+      email: user.email,
+      name: user.name,
+      avatarUrl: user.avatarUrl ?? null,
+      contact: user.contact ?? null
+    }
   });
 });
 
