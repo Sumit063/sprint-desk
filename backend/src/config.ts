@@ -8,6 +8,11 @@ export const refreshTokenTtlDays = Number(
 export const refreshCookieName = "refresh_token";
 export const isProd = process.env.NODE_ENV === "production";
 export const googleClientId = process.env.GOOGLE_CLIENT_ID ?? "";
+export const smtpHost = process.env.SMTP_HOST ?? "";
+export const smtpPort = Number(process.env.SMTP_PORT ?? 0);
+export const smtpUser = process.env.SMTP_USER ?? "";
+export const smtpPass = process.env.SMTP_PASS ?? "";
+export const smtpFrom = process.env.SMTP_FROM ?? "";
 
 export const refreshCookieOptions = {
   httpOnly: true,

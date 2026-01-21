@@ -42,6 +42,9 @@ Google login requires:
 - Backend: `GOOGLE_CLIENT_ID`
 - Frontend: `VITE_GOOGLE_CLIENT_ID`
 
+Email OTP login requires SMTP settings in `backend/.env`:
+`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`.
+
 ## shadcn/ui Setup
 
 The frontend is pre-configured for shadcn/ui. To add components, run:
