@@ -1,7 +1,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
 import AuthShell from "@/components/AuthShell";
 import { useAuthStore } from "@/stores/auth";
@@ -15,8 +16,11 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const login = useAuthStore((state) => state.login);
+  const loginWithGoogle = useAuthStore((state) => state.loginWithGoogle);
   const [formError, setFormError] = useState<string | null>(null);
+  const googleButtonRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
   const {
     register,
     handleSubmit,
@@ -34,6 +38,76 @@ export default function LoginPage() {
       setFormError("Unable to sign in. Check your details and try again.");
     }
   };
+
+  useEffect(() => {
+    if (!googleClientId) {
+      return;
+    }
+
+    let cancelled = false;
+    const initialize = () => {
+      if (cancelled || !window.google?.accounts?.id || !googleButtonRef.current) {
+        return;
+      }
+
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: async (response) => {
+          try {
+            setFormError(null);
+            await loginWithGoogle(response.credential);
+            navigate("/app");
+          } catch {
+            toast.error("Google sign-in failed");
+          }
+        }
+      });
+
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        theme: "outline",
+        size: "large",
+        text: "continue_with",
+        shape: "rectangular",
+        width: 320
+      });
+    };
+
+    if (window.google?.accounts?.id) {
+      initialize();
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const existingScript = document.querySelector<HTMLScriptElement>(
+      'script[src="https://accounts.google.com/gsi/client"]'
+    );
+    if (existingScript) {
+      existingScript.addEventListener("load", initialize);
+      return () => {
+        cancelled = true;
+        existingScript.removeEventListener("load", initialize);
+      };
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = initialize;
+    script.onerror = () => {
+      if (!cancelled) {
+        toast.error("Unable to load Google sign-in");
+      }
+    };
+    document.head.appendChild(script);
+
+    return () => {
+      cancelled = true;
+      script.onload = null;
+      script.onerror = null;
+    };
+  }, [googleClientId, loginWithGoogle, navigate]);
 
   return (
     <AuthShell
@@ -88,6 +162,18 @@ export default function LoginPage() {
           Sign in
         </button>
       </form>
+      {googleClientId ? (
+        <>
+          <div className="my-6 flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+            <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+            <span>or</span>
+            <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+          </div>
+          <div className="flex justify-center">
+            <div ref={googleButtonRef} className="w-full max-w-xs" />
+          </div>
+        </>
+      ) : null}
     </AuthShell>
   );
 }

@@ -38,6 +38,10 @@ npm run dev
 - `backend/.env.example`
 - `frontend/.env.example`
 
+Google login requires:
+- Backend: `GOOGLE_CLIENT_ID`
+- Frontend: `VITE_GOOGLE_CLIENT_ID`
+
 ## shadcn/ui Setup
 
 The frontend is pre-configured for shadcn/ui. To add components, run:
