@@ -7,6 +7,7 @@ export const refreshTokenTtlDays = Number(
 );
 export const refreshCookieName = "refresh_token";
 export const isProd = process.env.NODE_ENV === "production";
+export const googleClientId = process.env.GOOGLE_CLIENT_ID ?? "";
 
 export const refreshCookieOptions = {
   httpOnly: true,

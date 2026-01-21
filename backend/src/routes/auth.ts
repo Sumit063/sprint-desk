@@ -1,11 +1,14 @@
-import { Router } from "express";
+import crypto from "crypto";
+import { Router, type Response } from "express";
 import bcrypt from "bcryptjs";
+import { OAuth2Client } from "google-auth-library";
 import { z } from "zod";
 import { RefreshTokenModel } from "../models/RefreshToken";
 import { UserModel } from "../models/User";
 import { authLimiter } from "../middleware/rateLimit";
 import { validateBody } from "../middleware/validate";
 import {
+  googleClientId,
   refreshCookieName,
   refreshCookieOptions
 } from "../config";
@@ -17,6 +20,7 @@ import {
 } from "../utils/tokens";
 
 const router = Router();
+const googleClient = new OAuth2Client(googleClientId);
 
 router.use(authLimiter);
 
@@ -30,6 +34,30 @@ const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6)
 });
+
+const googleSchema = z.object({
+  credential: z.string().min(1)
+});
+
+async function issueTokens(
+  res: Response,
+  user: { _id: { toString(): string }; email: string; name: string }
+) {
+  const refreshToken = createRefreshToken();
+  await RefreshTokenModel.create({
+    userId: user._id,
+    tokenHash: hashToken(refreshToken),
+    expiresAt: refreshTokenExpiresAt()
+  });
+
+  const accessToken = createAccessToken(user._id.toString());
+  res.cookie(refreshCookieName, refreshToken, refreshCookieOptions);
+
+  return {
+    accessToken,
+    user: { id: user._id, email: user.email, name: user.name }
+  };
+}
 
 router.post("/register", validateBody(registerSchema), async (req, res) => {
   const { email, name, password } = req.body;
@@ -46,20 +74,8 @@ router.post("/register", validateBody(registerSchema), async (req, res) => {
     passwordHash
   });
 
-  const refreshToken = createRefreshToken();
-  await RefreshTokenModel.create({
-    userId: user._id,
-    tokenHash: hashToken(refreshToken),
-    expiresAt: refreshTokenExpiresAt()
-  });
-
-  const accessToken = createAccessToken(user._id.toString());
-  res.cookie(refreshCookieName, refreshToken, refreshCookieOptions);
-
-  return res.status(201).json({
-    accessToken,
-    user: { id: user._id, email: user.email, name: user.name }
-  });
+  const payload = await issueTokens(res, user);
+  return res.status(201).json(payload);
 });
 
 router.post("/login", validateBody(loginSchema), async (req, res) => {
@@ -75,20 +91,67 @@ router.post("/login", validateBody(loginSchema), async (req, res) => {
     return res.status(401).json({ message: "Invalid credentials" });
   }
 
-  const refreshToken = createRefreshToken();
-  await RefreshTokenModel.create({
-    userId: user._id,
-    tokenHash: hashToken(refreshToken),
-    expiresAt: refreshTokenExpiresAt()
-  });
+  const payload = await issueTokens(res, user);
+  return res.json(payload);
+});
 
-  const accessToken = createAccessToken(user._id.toString());
-  res.cookie(refreshCookieName, refreshToken, refreshCookieOptions);
+router.post("/google", validateBody(googleSchema), async (req, res) => {
+  if (!googleClientId) {
+    return res.status(500).json({ message: "Google auth not configured" });
+  }
 
-  return res.json({
-    accessToken,
-    user: { id: user._id, email: user.email, name: user.name }
-  });
+  const { credential } = req.body;
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: googleClientId
+    });
+    const idPayload = ticket.getPayload();
+    if (!idPayload?.email || !idPayload.sub) {
+      return res.status(401).json({ message: "Google token invalid" });
+    }
+
+    if (idPayload.email_verified === false) {
+      return res.status(401).json({ message: "Google email not verified" });
+    }
+
+    const email = idPayload.email.toLowerCase();
+    let user = await UserModel.findOne({ googleId: idPayload.sub });
+
+    if (!user) {
+      user = await UserModel.findOne({ email });
+      if (user) {
+        if (user.googleId && user.googleId !== idPayload.sub) {
+          return res.status(409).json({ message: "Google account already linked" });
+        }
+
+        if (!user.googleId) {
+          user.googleId = idPayload.sub;
+          if (!user.provider || user.provider === "local") {
+            user.provider = "google";
+          }
+          await user.save();
+        }
+      }
+    }
+
+    if (!user) {
+      const name = idPayload.name?.trim() || email.split("@")[0];
+      const passwordHash = await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 10);
+      user = await UserModel.create({
+        email,
+        name,
+        passwordHash,
+        provider: "google",
+        googleId: idPayload.sub
+      });
+    }
+
+    const payload = await issueTokens(res, user);
+    return res.json(payload);
+  } catch {
+    return res.status(401).json({ message: "Google token invalid" });
+  }
 });
 
 router.post("/refresh", async (req, res) => {
