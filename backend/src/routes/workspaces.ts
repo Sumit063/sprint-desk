@@ -7,6 +7,7 @@ import {
   requireWorkspaceRole
 } from "../middleware/workspace";
 import { validateBody } from "../middleware/validate";
+import { ActivityModel } from "../models/Activity";
 import { InviteModel } from "../models/Invite";
 import { ArticleModel } from "../models/Article";
 import { IssueModel } from "../models/Issue";
@@ -28,6 +29,14 @@ const joinWorkspaceSchema = z.object({
 const updateRoleSchema = z.object({
   role: z.enum(workspaceRoles)
 });
+
+const parseNumber = (value: unknown, fallback: number) => {
+  const parsed = Number(value);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return parsed;
+  }
+  return fallback;
+};
 
 router.use(requireAuth);
 
@@ -290,6 +299,18 @@ router.get("/:id/members/:memberId/overview", requireWorkspaceMember, async (req
       kbWorkedOn: recentKbWorkedOn
     }
   });
+});
+
+router.get("/:id/activities", requireWorkspaceMember, async (req, res) => {
+  const limit = Math.min(parseNumber(req.query.limit, 20), 50);
+
+  const activities = await ActivityModel.find({ workspaceId: req.workspaceId })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .populate("actorId", "name email avatarUrl")
+    .populate("issueId", "ticketId title status");
+
+  return res.json({ activities });
 });
 
 export default router;

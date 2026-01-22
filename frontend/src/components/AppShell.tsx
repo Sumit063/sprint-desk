@@ -6,6 +6,7 @@ import {
   BookOpen,
   ChevronDown,
   ChevronRight,
+  LayoutDashboard,
   ListChecks,
   LogOut,
   Moon,
@@ -34,6 +35,7 @@ type Notification = {
 };
 
 const navItems = [
+  { label: "Dashboard", to: "/app/dashboard", icon: LayoutDashboard },
   { label: "Issues", to: "/app/issues", icon: ListChecks },
   { label: "Knowledge Base", to: "/app/kb", icon: BookOpen },
   { label: "Notifications", to: "/app/notifications", icon: Bell },
@@ -41,6 +43,7 @@ const navItems = [
 ];
 
 const breadcrumbMap: Record<string, string> = {
+  dashboard: "Dashboard",
   issues: "Issues",
   kb: "Knowledge Base",
   notifications: "Notifications",
@@ -135,7 +138,7 @@ export default function AppShell() {
       <div className="flex h-screen overflow-hidden bg-background text-foreground">
         <aside className="flex h-full w-60 flex-col border-r border-border bg-surface">
           <div className="px-5 py-4">
-            <Link to="/app/issues" className="inline-flex items-center">
+            <Link to="/app/dashboard" className="inline-flex items-center">
               <img
                 src="/sprintdesk-logo.png"
                 alt="SprintDesk"

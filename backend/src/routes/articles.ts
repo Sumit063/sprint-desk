@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAuth } from "../middleware/auth";
 import { requireWorkspaceMember, requireWorkspaceRole } from "../middleware/workspace";
 import { validateBody } from "../middleware/validate";
+import { ActivityModel } from "../models/Activity";
 import { ArticleModel } from "../models/Article";
 import { WorkspaceModel } from "../models/Workspace";
 
@@ -87,6 +88,21 @@ router.post(
       linkedIssueIds: req.body.linkedIssueIds ?? []
     });
 
+    const linkedIssueIds = (req.body.linkedIssueIds ?? []).map((id: string) => id.toString());
+    const action = linkedIssueIds.length > 0 ? "kb_linked" : "kb_created";
+
+    await ActivityModel.create({
+      workspaceId: req.workspaceId,
+      actorId: req.userId,
+      action,
+      meta: {
+        articleId: article._id,
+        kbId: article.kbId,
+        title: article.title,
+        linkedIssueIds
+      }
+    });
+
     return res.status(201).json({ article });
   }
 );
@@ -140,14 +156,48 @@ router.patch(
       article.kbId = `${workspace.key}-KB-${workspace.kbCounter}`;
     }
 
-    if (req.body.title !== undefined) article.title = req.body.title;
-    if (req.body.body !== undefined) article.body = req.body.body;
+    const previousLinkedIds = (article.linkedIssueIds ?? []).map((id) => id.toString());
+    const hasTitleUpdate = req.body.title !== undefined;
+    const hasBodyUpdate = req.body.body !== undefined;
+
+    if (hasTitleUpdate) article.title = req.body.title;
+    if (hasBodyUpdate) article.body = req.body.body;
     if (req.body.linkedIssueIds !== undefined) {
       article.linkedIssueIds = req.body.linkedIssueIds;
     }
     article.updatedBy = req.userId;
 
     await article.save();
+
+    const updatedLinkedIds = (article.linkedIssueIds ?? []).map((id) => id.toString());
+    const addedLinkedIds = updatedLinkedIds.filter(
+      (id) => !previousLinkedIds.includes(id)
+    );
+
+    if (addedLinkedIds.length > 0) {
+      await ActivityModel.create({
+        workspaceId: req.workspaceId,
+        actorId: req.userId,
+        action: "kb_linked",
+        meta: {
+          articleId: article._id,
+          kbId: article.kbId,
+          title: article.title,
+          linkedIssueIds: addedLinkedIds
+        }
+      });
+    } else if (hasTitleUpdate || hasBodyUpdate) {
+      await ActivityModel.create({
+        workspaceId: req.workspaceId,
+        actorId: req.userId,
+        action: "kb_updated",
+        meta: {
+          articleId: article._id,
+          kbId: article.kbId,
+          title: article.title
+        }
+      });
+    }
 
     return res.json({ article });
   }

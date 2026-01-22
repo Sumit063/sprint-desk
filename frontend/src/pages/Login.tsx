@@ -41,7 +41,7 @@ export default function LoginPage() {
     setFormError(null);
     try {
       await login(values);
-      navigate("/app");
+      navigate("/app/dashboard");
     } catch {
       setFormError("Unable to sign in. Check your details and try again.");
     }
@@ -77,7 +77,7 @@ export default function LoginPage() {
     setOtpBusy(true);
     try {
       await verifyOtp({ email: normalizedEmail, code: otpCode });
-      navigate("/app");
+      navigate("/app/dashboard");
     } catch {
       toast.error("OTP verification failed");
     } finally {
@@ -89,7 +89,7 @@ export default function LoginPage() {
     setDemoBusy(type);
     try {
       await loginAsDemo(type);
-      navigate("/app");
+      navigate("/app/dashboard");
     } catch {
       toast.error("Demo login unavailable");
     } finally {
@@ -114,7 +114,7 @@ export default function LoginPage() {
           try {
             setFormError(null);
             await loginWithGoogle(response.credential);
-            navigate("/app");
+            navigate("/app/dashboard");
           } catch {
             toast.error("Google sign-in failed");
           }

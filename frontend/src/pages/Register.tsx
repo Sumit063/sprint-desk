@@ -30,7 +30,7 @@ export default function RegisterPage() {
     setFormError(null);
     try {
       await registerUser(values);
-      navigate("/app");
+      navigate("/app/dashboard");
     } catch {
       setFormError("Unable to register. Try a different email.");
     }

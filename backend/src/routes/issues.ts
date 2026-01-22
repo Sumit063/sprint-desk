@@ -177,14 +177,32 @@ router.patch(
 
     const updates = req.body;
     const fields = Object.keys(updates);
+    const changes: Record<string, { from?: string | null; to?: string | null }> = {};
 
-    if (updates.title !== undefined) issue.title = updates.title;
+    if (updates.title !== undefined && updates.title !== issue.title) {
+      changes.title = { from: issue.title, to: updates.title };
+      issue.title = updates.title;
+    }
     if (updates.description !== undefined) issue.description = updates.description;
-    if (updates.status !== undefined) issue.status = updates.status;
-    if (updates.priority !== undefined) issue.priority = updates.priority;
+    const previousStatus = issue.status;
+    if (updates.status !== undefined && updates.status !== issue.status) {
+      changes.status = { from: issue.status, to: updates.status };
+      issue.status = updates.status;
+    }
+    if (updates.priority !== undefined && updates.priority !== issue.priority) {
+      changes.priority = { from: issue.priority, to: updates.priority };
+      issue.priority = updates.priority;
+    }
     if (updates.labels !== undefined) issue.labels = updates.labels;
     const previousAssignee = issue.assigneeId?.toString() ?? null;
-    if (updates.assigneeId !== undefined) issue.assigneeId = updates.assigneeId;
+    if (updates.assigneeId !== undefined) {
+      const nextAssignee =
+        updates.assigneeId === null ? null : updates.assigneeId?.toString() ?? null;
+      if (nextAssignee !== previousAssignee) {
+        changes.assigneeId = { from: previousAssignee, to: nextAssignee };
+      }
+      issue.assigneeId = updates.assigneeId;
+    }
     if (updates.dueDate !== undefined) {
       issue.dueDate = updates.dueDate ? new Date(updates.dueDate) : null;
     }
@@ -192,12 +210,16 @@ router.patch(
     await issue.save();
 
     if (fields.length > 0) {
+      const statusUpdated = updates.status !== undefined && updates.status !== previousStatus;
+      const action =
+        statusUpdated && updates.status === "DONE" ? "issue_resolved" : "issue_updated";
+
       await ActivityModel.create({
         workspaceId: req.workspaceId,
         issueId: issue._id,
         actorId: req.userId,
-        action: "issue_updated",
-        meta: { fields }
+        action,
+        meta: { fields, changes }
       });
 
       emitWorkspaceEvent(req.workspaceId, "issue_updated", {

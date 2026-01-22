@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import AppShell from "@/components/AppShell";
 import LoginPage from "@/pages/Login";
 import RegisterPage from "@/pages/Register";
+import DashboardPage from "@/pages/Dashboard";
 import IssuesPage from "@/pages/Issues";
 import IssueDetailPage from "@/pages/IssueDetail";
 import KnowledgeBasePage from "@/pages/KnowledgeBase";
@@ -67,7 +68,8 @@ export default function App() {
             </RequireAuth>
           }
         >
-          <Route index element={<IssuesPage />} />
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<DashboardPage />} />
           <Route path="issues" element={<IssuesPage />} />
           <Route path="issues/:issueId" element={<IssueDetailPage />} />
           <Route path="kb" element={<KnowledgeBasePage />} />
